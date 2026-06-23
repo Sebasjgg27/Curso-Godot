@@ -1,0 +1,3937 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GDScript & Godot 4 — Guía Metroidvania 2D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   TOKENS
+   ============================================================ */
+:root {
+  --bg:          #0d1117;
+  --bg-panel:    #161b22;
+  --bg-card:     #1c2333;
+  --bg-hover:    #21293a;
+  --border:      #30363d;
+  --border-lit:  #444c56;
+  --txt:         #c9d1d9;
+  --txt-muted:   #6e7681;
+  --txt-dim:     #8b949e;
+  --green:       #7eca4c;
+  --green-dim:   #3d6b24;
+  --violet:      #a97bff;
+  --violet-dim:  #4a3572;
+  --cyan:        #4fc3f7;
+  --orange:      #f08a3b;
+  --red:         #ff7b72;
+  --yellow:      #e3b341;
+  --pink:        #f778ba;
+  --font-mono:   'JetBrains Mono', monospace;
+  --font-body:   'Inter', sans-serif;
+  --sidebar-w:   260px;
+  --radius:      6px;
+  --radius-lg:   10px;
+}
+
+/* ============================================================
+   RESET & BASE
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; font-size: 15px; }
+body {
+  background: var(--bg);
+  color: var(--txt);
+  font-family: var(--font-body);
+  line-height: 1.7;
+  display: flex;
+  min-height: 100vh;
+}
+a { color: var(--violet); text-decoration: none; }
+a:hover { color: var(--green); text-decoration: underline; }
+::selection { background: var(--violet-dim); color: #fff; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border-lit); border-radius: 3px; }
+
+/* ============================================================
+   SIDEBAR — GODOT FILE TREE
+   ============================================================ */
+#sidebar {
+  width: var(--sidebar-w);
+  min-height: 100vh;
+  background: var(--bg-panel);
+  border-right: 1px solid var(--border);
+  position: fixed;
+  top: 0; left: 0;
+  overflow-y: auto;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  transition: transform .3s ease;
+}
+.sidebar-header {
+  padding: 18px 16px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.sidebar-header .logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--green);
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.sidebar-header .logo svg { flex-shrink: 0; }
+.sidebar-header .version-badge {
+  margin-top: 8px;
+  font-family: var(--font-mono);
+  font-size: .68rem;
+  color: var(--txt-muted);
+}
+.sidebar-header .version-badge span {
+  color: var(--violet);
+  font-weight: 600;
+}
+
+/* Tree nav */
+.tree { padding: 8px 0 60px; }
+.tree-section { margin-bottom: 2px; }
+.tree-section-title {
+  padding: 6px 16px;
+  font-family: var(--font-mono);
+  font-size: .68rem;
+  font-weight: 700;
+  color: var(--txt-muted);
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+  transition: color .2s;
+}
+.tree-section-title:hover { color: var(--txt); }
+.tree-section-title .arrow {
+  transition: transform .2s;
+  font-size: .6rem;
+  color: var(--txt-muted);
+}
+.tree-section.open .arrow { transform: rotate(90deg); }
+.tree-items { display: none; }
+.tree-section.open .tree-items { display: block; }
+.tree-item {
+  padding: 5px 16px 5px 28px;
+  font-family: var(--font-mono);
+  font-size: .75rem;
+  color: var(--txt-dim);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border-left: 2px solid transparent;
+  transition: all .15s;
+  position: relative;
+}
+.tree-item::before {
+  content: '';
+  position: absolute;
+  left: 16px; top: 50%;
+  width: 6px; height: 1px;
+  background: var(--border-lit);
+}
+.tree-item:hover { background: var(--bg-hover); color: var(--txt); }
+.tree-item.active {
+  background: rgba(169,123,255,.12);
+  border-left-color: var(--violet);
+  color: var(--violet);
+}
+.tree-item .icon { font-size: .8rem; flex-shrink: 0; }
+
+/* ============================================================
+   MAIN CONTENT
+   ============================================================ */
+#main {
+  margin-left: var(--sidebar-w);
+  flex: 1;
+  min-width: 0;
+}
+.top-bar {
+  position: sticky;
+  top: 0;
+  background: rgba(13,17,23,.92);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 32px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 50;
+}
+.top-bar .breadcrumb {
+  font-family: var(--font-mono);
+  font-size: .75rem;
+  color: var(--txt-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.top-bar .breadcrumb .sep { color: var(--border-lit); }
+.top-bar .breadcrumb .current { color: var(--txt); }
+.progress-indicator {
+  font-family: var(--font-mono);
+  font-size: .72rem;
+  color: var(--txt-muted);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.top-bar .controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.progress-bar-wrap {
+  width: 120px;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--violet), var(--green));
+  border-radius: 2px;
+  transition: width .4s ease;
+  width: 0%;
+}
+.code-only-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: .68rem;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  color: var(--txt-muted);
+  border: 1px solid var(--border);
+  background: var(--bg-panel);
+  padding: 6px 10px;
+  border-radius: 4px;
+  user-select: none;
+}
+.code-only-switch input {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--green);
+}
+
+/* Content area */
+.content {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 48px 40px 80px;
+}
+
+/* ============================================================
+   HERO
+   ============================================================ */
+.hero {
+  padding: 48px 0 44px;
+  border-bottom: 4px solid var(--green-dim);
+  margin-bottom: 40px;
+  position: relative;
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -60px; right: -60px;
+  width: 320px; height: 320px;
+  background: radial-gradient(circle, rgba(169,123,255,.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero::after {
+  content: 'INDEX';
+  position: absolute;
+  right: 0;
+  bottom: 16px;
+  font-family: var(--font-mono);
+  font-size: .68rem;
+  color: var(--txt-muted);
+  letter-spacing: .24em;
+  text-transform: uppercase;
+}
+.hero-eyebrow {
+  font-family: var(--font-mono);
+  font-size: .72rem;
+  font-weight: 600;
+  color: var(--green);
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.hero-eyebrow::before {
+  content: '';
+  display: block;
+  width: 24px; height: 2px;
+  background: var(--green);
+}
+.hero h1 {
+  font-family: var(--font-mono);
+  font-size: clamp(3rem, 8vw, 7rem);
+  font-weight: 900;
+  line-height: .9;
+  letter-spacing: -0.08em;
+  color: #fff;
+  margin-bottom: 18px;
+  text-transform: uppercase;
+  max-width: 12ch;
+}
+.hero h1 .accent { color: var(--violet); }
+.hero h1 .accent2 { color: var(--green); }
+.hero p {
+  font-size: 1.05rem;
+  color: var(--txt-dim);
+  max-width: 560px;
+  margin-bottom: 32px;
+  line-height: 1.8;
+}
+.hero-tags {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.hero-index {
+  list-style: none;
+  display: grid;
+  gap: 10px;
+  margin: 28px 0 0;
+}
+.hero-index-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 84px 1fr auto;
+  gap: 14px;
+  align-items: center;
+  min-height: 74px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  background:
+    linear-gradient(180deg, rgba(13,17,23,.92), rgba(13,17,23,.76)),
+    radial-gradient(circle at top left, rgba(169,123,255,.14), transparent 42%);
+  overflow: hidden;
+  transition: transform .18s ease, border-color .18s ease, opacity .18s ease, filter .18s ease;
+  cursor: pointer;
+}
+.hero-index-item::before {
+  content: attr(data-num);
+  font-family: var(--font-mono);
+  font-size: clamp(2rem, 4vw, 3.8rem);
+  font-weight: 900;
+  line-height: 1;
+  color: rgba(255,255,255,.18);
+  letter-spacing: -0.08em;
+}
+.hero-index-item::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--phase-gradient, linear-gradient(135deg, rgba(79,195,247,.2), rgba(169,123,255,.12)));
+  opacity: .25;
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+.hero-index-item .hero-index-label {
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-mono);
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: -0.04em;
+  font-size: clamp(1.25rem, 2.4vw, 2.2rem);
+  line-height: 1;
+}
+.hero-index-item .hero-index-meta {
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-mono);
+  font-size: .68rem;
+  color: var(--txt-muted);
+  text-transform: uppercase;
+  letter-spacing: .12em;
+}
+.hero-index:hover .hero-index-item {
+  opacity: .38;
+  filter: grayscale(.25);
+}
+.hero-index .hero-index-item:hover {
+  opacity: 1;
+  filter: none;
+  transform: translateX(6px);
+  border-color: var(--green);
+}
+.hero-index .hero-index-item:hover .hero-index-label { color: #fff; }
+.hero-index .hero-index-item:hover::after {
+  opacity: .9;
+  background:
+    linear-gradient(135deg, var(--phase-a), var(--phase-b)),
+    radial-gradient(circle at 20% 20%, rgba(255,255,255,.18), transparent 36%);
+}
+.tag {
+  font-family: var(--font-mono);
+  font-size: .68rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid;
+  letter-spacing: .05em;
+}
+.tag.green  { color: var(--green);  border-color: var(--green-dim);  background: rgba(126,202,76,.08); }
+.tag.violet { color: var(--violet); border-color: var(--violet-dim); background: rgba(169,123,255,.08); }
+.tag.cyan   { color: var(--cyan);   border-color: rgba(79,195,247,.3); background: rgba(79,195,247,.08); }
+.tag.orange { color: var(--orange); border-color: rgba(240,138,59,.3); background: rgba(240,138,59,.08); }
+
+/* ============================================================
+   SECTIONS
+   ============================================================ */
+.section {
+  margin-bottom: 72px;
+  display: none;
+}
+.section.active-section { display: block; }
+.section-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 28px;
+  padding-bottom: 18px;
+  border-bottom: 4px solid var(--violet-dim);
+  position: relative;
+}
+.section-header::after {
+  content: attr(data-divider);
+  position: absolute;
+  right: 0;
+  bottom: -12px;
+  font-family: var(--font-mono);
+  font-size: .66rem;
+  color: var(--txt-muted);
+  letter-spacing: .22em;
+  text-transform: uppercase;
+}
+.section-number {
+  font-family: var(--font-mono);
+  font-size: .68rem;
+  color: var(--violet);
+  background: rgba(169,123,255,.12);
+  border: 1px solid var(--violet-dim);
+  padding: 2px 8px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+.section-title {
+  font-family: var(--font-mono);
+  font-size: clamp(2.4rem, 6vw, 5.5rem);
+  font-weight: 900;
+  color: #fff;
+  line-height: .88;
+  letter-spacing: -0.08em;
+  text-transform: uppercase;
+}
+.section-title .dim { color: var(--txt-muted); font-weight: 400; }
+
+/* h2 inside sections */
+.section h2 {
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--green);
+  margin: 36px 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.section h2::before { content: '##'; color: var(--green-dim); font-weight: 400; }
+.section h3 {
+  font-family: var(--font-mono);
+  font-size: .95rem;
+  font-weight: 600;
+  color: var(--cyan);
+  margin: 24px 0 10px;
+}
+.section p { margin-bottom: 14px; color: var(--txt); font-size: .95rem; line-height: 1.8; }
+.section ul, .section ol { padding-left: 22px; margin-bottom: 14px; }
+.section li { margin-bottom: 6px; color: var(--txt); font-size: .95rem; line-height: 1.7; }
+.section li strong { color: #fff; }
+.tip, .warning, .info, .note {
+  border-left: 3px solid;
+  padding: 14px 18px;
+  border-radius: 0 var(--radius) var(--radius) 0;
+  margin: 20px 0;
+  font-size: .9rem;
+}
+.tip    { border-color: var(--green);  background: rgba(126,202,76,.07);  }
+.tip strong    { color: var(--green); }
+.warning{ border-color: var(--orange); background: rgba(240,138,59,.07); }
+.warning strong{ color: var(--orange); }
+.info   { border-color: var(--cyan);   background: rgba(79,195,247,.07);  }
+.info strong   { color: var(--cyan); }
+.note   { border-color: var(--violet); background: rgba(169,123,255,.07); }
+.note strong   { color: var(--violet); }
+
+/* ============================================================
+   CODE BLOCKS
+   ============================================================ */
+.code-block {
+  background: #010409;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  margin: 16px 0 20px;
+  overflow: hidden;
+  position: relative;
+}
+.code-block-header {
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.code-block-header .lang {
+  font-family: var(--font-mono);
+  font-size: .68rem;
+  font-weight: 700;
+  color: var(--violet);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.code-block-header .file-name {
+  font-family: var(--font-mono);
+  font-size: .72rem;
+  color: var(--txt-muted);
+  flex: 1;
+  margin-left: 8px;
+}
+.copy-btn {
+  font-family: var(--font-mono);
+  font-size: .68rem;
+  color: var(--txt-muted);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 10px;
+  cursor: pointer;
+  transition: all .2s;
+}
+.copy-btn:hover { border-color: var(--violet); color: var(--violet); }
+.copy-btn.copied { border-color: var(--green); color: var(--green); }
+.code-block pre {
+  padding: 18px 20px;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: .83rem;
+  line-height: 1.65;
+}
+.code-block code { font-family: var(--font-mono); }
+/* Syntax highlighting */
+.kw  { color: #ff7b72; }  /* keywords */
+.fn  { color: #d2a8ff; }  /* functions */
+.str { color: #a5d6ff; }  /* strings */
+.num { color: #f0883e; }  /* numbers */
+.cm  { color: #8b949e; font-style: italic; }  /* comments */
+.cls { color: #ffa657; }  /* class names */
+.var { color: #79c0ff; }  /* variables/props */
+.op  { color: #ff7b72; }  /* operators */
+
+code.inline {
+  font-family: var(--font-mono);
+  font-size: .83em;
+  color: var(--violet);
+  background: rgba(169,123,255,.12);
+  border: 1px solid var(--violet-dim);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+/* ============================================================
+   CARDS / GRID
+   ============================================================ */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
+  margin: 20px 0;
+}
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  transition: border-color .2s, transform .2s;
+  cursor: default;
+}
+.card:hover {
+  border-color: var(--border-lit);
+  transform: translateY(-2px);
+}
+.card .card-icon { font-size: 1.4rem; margin-bottom: 10px; }
+.card .card-title {
+  font-family: var(--font-mono);
+  font-size: .85rem;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 6px;
+}
+.card .card-desc { font-size: .82rem; color: var(--txt-muted); line-height: 1.6; }
+
+/* Scene node display */
+.node-tree {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  margin: 16px 0;
+  overflow: hidden;
+}
+.node-diagram {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.node-diagram text { font-family: var(--font-mono); }
+.node-diagram .node-box {
+  fill: rgba(22,27,34,.92);
+  stroke: var(--border-lit);
+  stroke-width: 1.4;
+}
+.node-diagram .node-root {
+  fill: rgba(169,123,255,.14);
+  stroke: var(--violet);
+}
+.node-diagram .node-child { fill: rgba(13,17,23,.9); }
+.node-diagram .node-label {
+  fill: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+.node-diagram .node-type {
+  fill: var(--cyan);
+  font-size: 9px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.node-diagram .node-link {
+  stroke: var(--green-dim);
+  stroke-width: 2.5;
+  fill: none;
+}
+.node-diagram .node-hit { cursor: pointer; }
+.node-diagram .node-hit:hover .node-box {
+  stroke: var(--green);
+  fill: rgba(126,202,76,.1);
+}
+
+/* Table */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0 20px;
+  font-size: .85rem;
+}
+.data-table th {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  padding: 9px 14px;
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: .72rem;
+  color: var(--txt-muted);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+.data-table td {
+  border: 1px solid var(--border);
+  padding: 9px 14px;
+  color: var(--txt);
+  vertical-align: top;
+}
+.data-table tr:hover td { background: var(--bg-hover); }
+.data-table td code { font-family: var(--font-mono); font-size: .82em; color: var(--yellow); }
+.data-table td .type { color: var(--cyan); font-family: var(--font-mono); font-size: .78em; }
+
+/* ============================================================
+   QUIZ / INTERACTIVE
+   ============================================================ */
+.quiz {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  margin: 24px 0;
+}
+.quiz .quiz-q {
+  font-family: var(--font-mono);
+  font-size: .9rem;
+  color: #fff;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+.quiz-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.quiz-opt {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 16px;
+  font-family: var(--font-mono);
+  font-size: .82rem;
+  color: var(--txt);
+  cursor: pointer;
+  transition: all .2s;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.quiz-opt:hover { border-color: var(--violet); color: var(--txt); background: var(--bg-hover); }
+.quiz-opt.correct { border-color: var(--green); background: rgba(126,202,76,.1); color: var(--green); }
+.quiz-opt.wrong   { border-color: var(--red);   background: rgba(255,123,114,.1); color: var(--red); }
+.quiz-feedback {
+  margin-top: 14px;
+  font-size: .85rem;
+  display: none;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  border-left: 3px solid;
+}
+.quiz-feedback.show { display: block; }
+.quiz-feedback.ok { border-color: var(--green); background: rgba(126,202,76,.08); color: var(--green); }
+.quiz-feedback.ko { border-color: var(--red);   background: rgba(255,123,114,.08); color: var(--red); }
+
+/* Checklist */
+.checklist { list-style: none; padding: 0; margin: 12px 0; }
+.checklist li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: .9rem;
+  color: var(--txt);
+  cursor: pointer;
+  user-select: none;
+}
+.checklist li .cb {
+  width: 16px; height: 16px;
+  border: 1px solid var(--border-lit);
+  border-radius: 3px;
+  flex-shrink: 0;
+  margin-top: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .7rem;
+  transition: all .2s;
+}
+.checklist li.done .cb {
+  background: var(--green);
+  border-color: var(--green);
+  color: #000;
+}
+.checklist li.done { color: var(--txt-muted); text-decoration: line-through; }
+
+/* ============================================================
+   HAMBURGER (mobile)
+   ============================================================ */
+.hamburger {
+  display: none;
+  position: fixed;
+  bottom: 20px; right: 20px;
+  z-index: 200;
+  background: var(--violet);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 48px; height: 48px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(169,123,255,.4);
+}
+.overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.7);
+  z-index: 99;
+}
+.overlay.visible { display: block; }
+
+/* Nav prev/next */
+.nav-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 48px;
+  padding-top: 24px;
+  border-top: 4px solid var(--green-dim);
+  position: relative;
+}
+.nav-footer::before {
+  content: 'NAV';
+  position: absolute;
+  top: -10px;
+  left: 0;
+  font-family: var(--font-mono);
+  font-size: .66rem;
+  color: var(--txt-muted);
+  letter-spacing: .22em;
+  text-transform: uppercase;
+}
+.nav-btn {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 14px 20px;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: .78rem;
+  color: var(--txt-muted);
+  transition: all .2s;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 140px;
+}
+.nav-btn:hover { border-color: var(--violet); color: var(--txt); }
+.nav-btn .nav-dir { color: var(--violet); font-size: .68rem; text-transform: uppercase; letter-spacing: .1em; }
+.nav-btn.right { text-align: right; }
+
+/* ============================================================
+   CODE ONLY MODE
+   ============================================================ */
+body.code-only .hero,
+body.code-only .hero-tags,
+body.code-only .hero-index,
+body.code-only .section-header,
+body.code-only .section p,
+body.code-only .section h2,
+body.code-only .section h3,
+body.code-only .section ul,
+body.code-only .section ol,
+body.code-only .section .tip,
+body.code-only .section .warning,
+body.code-only .section .info,
+body.code-only .section .note,
+body.code-only .section .cards,
+body.code-only .section .quiz,
+body.code-only .section .checklist,
+body.code-only .section .nav-footer,
+body.code-only .data-table,
+body.code-only .section .node-tree {
+  display: none !important;
+}
+body.code-only .build-index,
+body.code-only .phase-switcher,
+body.code-only .build-phase-shell .phase-head,
+body.code-only .build-phase-shell .phase-panel h4,
+body.code-only .build-phase-shell .phase-panel .node-diagram,
+body.code-only .build-phase-shell .phase-panel .timeline,
+body.code-only .build-phase-shell .phase-panel .asset-slot,
+body.code-only .build-phase-shell .phase-panel .phase-reference,
+body.code-only .build-phase-shell .phase-panel p {
+  display: none !important;
+}
+body.code-only .build-phase-shell .phase-panel {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+body.code-only .section {
+  margin-bottom: 24px;
+}
+body.code-only .section .code-block {
+  display: block;
+}
+body.code-only .content {
+  max-width: 100%;
+}
+
+/* ============================================================
+   BUILD BLUEPRINT
+   ============================================================ */
+.build-index {
+  display: grid;
+  gap: 14px;
+  margin: 28px 0 42px;
+}
+.build-phase-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 84px 1fr auto;
+  gap: 14px;
+  align-items: center;
+  padding: 18px 18px 18px 16px;
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(22,27,34,.82), rgba(13,17,23,.94));
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform .18s ease, border-color .18s ease, opacity .18s ease;
+}
+.build-phase-card::before {
+  content: attr(data-phase);
+  font-family: var(--font-mono);
+  font-size: clamp(2.2rem, 4vw, 4.6rem);
+  font-weight: 900;
+  letter-spacing: -0.08em;
+  color: rgba(255,255,255,.15);
+}
+.build-phase-card:hover {
+  transform: translateX(6px);
+  border-color: var(--green);
+}
+.build-phase-card.active {
+  border-color: var(--green);
+  box-shadow: inset 0 0 0 1px rgba(126,202,76,.25);
+}
+.build-phase-card .build-phase-label {
+  font-family: var(--font-mono);
+  font-size: clamp(1.2rem, 2.2vw, 2.1rem);
+  font-weight: 900;
+  letter-spacing: -0.05em;
+  text-transform: uppercase;
+}
+.build-phase-card .build-phase-sub {
+  font-family: var(--font-mono);
+  font-size: .68rem;
+  color: var(--txt-muted);
+  text-transform: uppercase;
+  letter-spacing: .12em;
+}
+.build-phase-card .build-phase-go {
+  font-family: var(--font-mono);
+  font-size: .68rem;
+  color: var(--green);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.build-phase-shell {
+  display: none;
+  margin-top: 24px;
+}
+.build-phase-shell.active {
+  display: block;
+}
+.build-phase-shell .phase-head {
+  position: relative;
+  padding: 26px 18px 22px 18px;
+  border: 4px solid var(--border);
+  background:
+    linear-gradient(180deg, rgba(13,17,23,.9), rgba(13,17,23,.75)),
+    var(--phase-bg, linear-gradient(135deg, rgba(79,195,247,.12), rgba(169,123,255,.14)));
+  overflow: hidden;
+}
+.build-phase-shell .phase-head::before {
+  content: attr(data-num);
+  position: absolute;
+  inset: auto 18px 0 auto;
+  font-family: var(--font-mono);
+  font-size: clamp(7rem, 16vw, 16rem);
+  font-weight: 900;
+  line-height: .8;
+  letter-spacing: -0.12em;
+  color: rgba(255,255,255,.07);
+  pointer-events: none;
+}
+.build-phase-shell .phase-head h3 {
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-mono);
+  font-size: clamp(2rem, 5vw, 4rem);
+  font-weight: 900;
+  letter-spacing: -0.08em;
+  text-transform: uppercase;
+  line-height: .9;
+  margin-bottom: 10px;
+}
+.build-phase-shell .phase-head p {
+  position: relative;
+  z-index: 1;
+  max-width: 68ch;
+}
+.build-phase-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr);
+  gap: 18px;
+  margin-top: 18px;
+}
+.phase-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+}
+.phase-panel h4 {
+  font-family: var(--font-mono);
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .16em;
+  color: var(--green);
+  margin-bottom: 12px;
+}
+.phase-assets {
+  display: grid;
+  gap: 10px;
+}
+.asset-slot {
+  border: 2px solid var(--violet-dim);
+  background: rgba(169,123,255,.08);
+  padding: 12px;
+  font-family: var(--font-mono);
+  font-size: .78rem;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+.asset-slot strong {
+  display: block;
+  color: #fff;
+  font-size: .88rem;
+  letter-spacing: -0.04em;
+  margin-bottom: 4px;
+}
+.timeline {
+  width: 100%;
+  border-collapse: collapse;
+}
+.timeline th,
+.timeline td {
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+  font-size: .85rem;
+  text-align: left;
+}
+.timeline th {
+  font-family: var(--font-mono);
+  font-size: .7rem;
+  color: var(--txt-muted);
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  background: var(--bg-panel);
+}
+.phase-reference {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.phase-reference .ref-chip {
+  border: 1px solid var(--border);
+  background: rgba(22,27,34,.9);
+  padding: 10px 12px;
+  font-family: var(--font-mono);
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  cursor: pointer;
+  color: var(--txt);
+  text-align: left;
+  appearance: none;
+}
+.phase-switcher {
+  margin-top: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.phase-switcher button {
+  background: var(--bg-panel);
+  color: var(--txt);
+  border: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: .72rem;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+.phase-switcher button.active {
+  border-color: var(--green);
+  color: var(--green);
+}
+.build-phase-shell[data-theme="setup"] { --phase-bg: linear-gradient(135deg, rgba(59,99,160,.36), rgba(13,17,23,.86)); }
+.build-phase-shell[data-theme="movement"] { --phase-bg: linear-gradient(135deg, rgba(126,202,76,.26), rgba(13,17,23,.84)); }
+.build-phase-shell[data-theme="world"] { --phase-bg: linear-gradient(135deg, rgba(126,90,46,.28), rgba(13,17,23,.84)); }
+.build-phase-shell[data-theme="states"] { --phase-bg: linear-gradient(135deg, rgba(169,123,255,.3), rgba(13,17,23,.84)); }
+.build-phase-shell[data-theme="danger"] { --phase-bg: linear-gradient(135deg, rgba(255,123,114,.3), rgba(13,17,23,.84)); }
+.build-phase-shell[data-theme="interconnect"] { --phase-bg: linear-gradient(135deg, rgba(79,195,247,.28), rgba(13,17,23,.84)); }
+.build-phase-shell[data-theme="progression"] { --phase-bg: linear-gradient(135deg, rgba(227,179,65,.3), rgba(13,17,23,.84)); }
+.build-phase-shell[data-theme="polish"] { --phase-bg: linear-gradient(135deg, rgba(255,255,255,.18), rgba(13,17,23,.86)); }
+.build-phase-shell[data-theme="export"] { --phase-bg: linear-gradient(135deg, rgba(192,201,214,.32), rgba(13,17,23,.86)); }
+
+/* ============================================================
+   FLASH TRANSITION
+   ============================================================ */
+#flash-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 999;
+  opacity: 0;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255,255,255,.95), rgba(255,255,255,.5) 18%, transparent 28%),
+    linear-gradient(135deg, rgba(169,123,255,.38), rgba(126,202,76,.12));
+  mix-blend-mode: screen;
+}
+body.flash-transition #flash-layer {
+  animation: brutalFlash .22s steps(2, end) 1;
+}
+@keyframes brutalFlash {
+  0%   { opacity: 0; transform: scale(.98); }
+  18%  { opacity: 1; }
+  35%  { opacity: .3; }
+  55%  { opacity: .92; transform: scale(1.01); }
+  100% { opacity: 0; transform: scale(1); }
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 768px) {
+  :root { --sidebar-w: 260px; }
+  #sidebar { transform: translateX(-100%); }
+  #sidebar.open { transform: translateX(0); }
+  #main { margin-left: 0; }
+  .content { padding: 28px 20px 60px; }
+  .hero h1 { font-size: clamp(2.2rem, 12vw, 3.4rem); }
+  .section-title { font-size: clamp(1.8rem, 10vw, 3rem); }
+  .hero-index-item,
+  .build-phase-card {
+    grid-template-columns: 64px 1fr;
+  }
+  .hero-index-item .hero-index-meta:last-child,
+  .build-phase-card .build-phase-go {
+    display: none;
+  }
+  .build-phase-grid {
+    grid-template-columns: 1fr;
+  }
+  .top-bar {
+    padding: 0 16px;
+    gap: 8px;
+  }
+  .top-bar .controls {
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .hamburger { display: flex; align-items: center; justify-content: center; }
+  .cards { grid-template-columns: 1fr; }
+}
+
+/* ============================================================
+   PIXEL ART ACCENT — scanlines on hero
+   ============================================================ */
+.scanlines {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 3px,
+    rgba(0,0,0,.08) 3px,
+    rgba(0,0,0,.08) 4px
+  );
+  pointer-events: none;
+  opacity: .4;
+}
+</style>
+</head>
+<body>
+
+<!-- OVERLAY mobile -->
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+<div id="flash-layer"></div>
+
+<!-- SIDEBAR -->
+<nav id="sidebar">
+  <div class="sidebar-header">
+    <div class="logo">
+      <svg width="20" height="20" viewBox="0 0 40 40" fill="none">
+        <rect x="2" y="2" width="36" height="36" rx="4" fill="#478cbf"/>
+        <rect x="10" y="10" width="8" height="8" fill="#fff"/>
+        <rect x="22" y="10" width="8" height="8" fill="#fff"/>
+        <rect x="16" y="22" width="8" height="8" fill="#fff"/>
+      </svg>
+      GDScript 2D Guide
+    </div>
+    <div class="version-badge">Godot <span>4.x</span> · GDScript <span>2.0</span></div>
+  </div>
+
+  <div class="tree">
+
+    <div class="tree-section open" data-section="intro">
+      <div class="tree-section-title" onclick="toggleSection(this)">
+        <span class="arrow">▶</span> 00_inicio
+      </div>
+      <div class="tree-items">
+        <div class="tree-item active" onclick="navigate('intro','Introducción','El Entorno')">
+          <span class="icon">📄</span>bienvenida.gd
+        </div>
+        <div class="tree-item" onclick="navigate('intro','Introducción','Instalación')">
+          <span class="icon">⚙️</span>instalacion.gd
+        </div>
+        <div class="tree-item" onclick="navigate('intro','Introducción','Editor')">
+          <span class="icon">🖥️</span>editor_godot.gd
+        </div>
+      </div>
+    </div>
+
+    <div class="tree-section" data-section="gdscript">
+      <div class="tree-section-title" onclick="toggleSection(this)">
+        <span class="arrow">▶</span> 01_gdscript_bases
+      </div>
+      <div class="tree-items">
+        <div class="tree-item" onclick="navigate('gdscript','GDScript Bases','Variables y Tipos')">
+          <span class="icon">📝</span>variables.gd
+        </div>
+        <div class="tree-item" onclick="navigate('gdscript','GDScript Bases','Funciones')">
+          <span class="icon">🔧</span>funciones.gd
+        </div>
+        <div class="tree-item" onclick="navigate('gdscript','GDScript Bases','Control de Flujo')">
+          <span class="icon">🔀</span>control_flujo.gd
+        </div>
+        <div class="tree-item" onclick="navigate('gdscript','GDScript Bases','Arrays y Diccionarios')">
+          <span class="icon">📦</span>colecciones.gd
+        </div>
+        <div class="tree-item" onclick="navigate('gdscript','GDScript Bases','Clases y POO')">
+          <span class="icon">🏗️</span>clases.gd
+        </div>
+      </div>
+    </div>
+
+    <div class="tree-section" data-section="nodes">
+      <div class="tree-section-title" onclick="toggleSection(this)">
+        <span class="arrow">▶</span> 02_nodos_y_escenas
+      </div>
+      <div class="tree-items">
+        <div class="tree-item" onclick="navigate('nodes','Nodos y Escenas','Árbol de Nodos')">
+          <span class="icon">🌲</span>arbol_nodos.tscn
+        </div>
+        <div class="tree-item" onclick="navigate('nodes','Nodos y Escenas','Señales')">
+          <span class="icon">📡</span>signals.gd
+        </div>
+        <div class="tree-item" onclick="navigate('nodes','Nodos y Escenas','Grupos')">
+          <span class="icon">👥</span>grupos.gd
+        </div>
+        <div class="tree-item" onclick="navigate('nodes','Nodos y Escenas','Instancias')">
+          <span class="icon">♻️</span>instancias.gd
+        </div>
+      </div>
+    </div>
+
+    <div class="tree-section" data-section="player">
+      <div class="tree-section-title" onclick="toggleSection(this)">
+        <span class="arrow">▶</span> 03_jugador_2d
+      </div>
+      <div class="tree-items">
+        <div class="tree-item" onclick="navigate('player','Jugador 2D','CharacterBody2D')">
+          <span class="icon">🧍</span>player.gd
+        </div>
+        <div class="tree-item" onclick="navigate('player','Jugador 2D','Input & Movimiento')">
+          <span class="icon">🕹️</span>input_movement.gd
+        </div>
+        <div class="tree-item" onclick="navigate('player','Jugador 2D','Animaciones')">
+          <span class="icon">🎬</span>animaciones.gd
+        </div>
+        <div class="tree-item" onclick="navigate('player','Jugador 2D','Cámara 2D')">
+          <span class="icon">📷</span>camera2d.gd
+        </div>
+      </div>
+    </div>
+
+    <div class="tree-section" data-section="metroidvania">
+      <div class="tree-section-title" onclick="toggleSection(this)">
+        <span class="arrow">▶</span> 04_metroidvania
+      </div>
+      <div class="tree-items">
+        <div class="tree-item" onclick="navigate('metroidvania','Metroidvania','Diseño de Salas')">
+          <span class="icon">🗺️</span>room_design.tscn
+        </div>
+        <div class="tree-item" onclick="navigate('metroidvania','Metroidvania','TileMap 2D')">
+          <span class="icon">🧩</span>tilemap.gd
+        </div>
+        <div class="tree-item" onclick="navigate('metroidvania','Metroidvania','Sistema de Habilidades')">
+          <span class="icon">⚡</span>abilities.gd
+        </div>
+        <div class="tree-item" onclick="navigate('metroidvania','Metroidvania','Enemigos & IA')">
+          <span class="icon">👾</span>enemy_ai.gd
+        </div>
+        <div class="tree-item" onclick="navigate('metroidvania','Metroidvania','Transiciones')">
+          <span class="icon">🚪</span>room_transitions.gd
+        </div>
+      </div>
+    </div>
+
+    <div class="tree-section" data-section="pixelart">
+      <div class="tree-section-title" onclick="toggleSection(this)">
+        <span class="arrow">▶</span> 05_pixel_art
+      </div>
+      <div class="tree-items">
+        <div class="tree-item" onclick="navigate('pixelart','Pixel Art','Config Proyecto')">
+          <span class="icon">🎨</span>pixel_config.gd
+        </div>
+        <div class="tree-item" onclick="navigate('pixelart','Pixel Art','AnimatedSprite2D')">
+          <span class="icon">✨</span>sprite_anim.gd
+        </div>
+        <div class="tree-item" onclick="navigate('pixelart','Pixel Art','Luces 2D')">
+          <span class="icon">💡</span>lighting_2d.gd
+        </div>
+        <div class="tree-item" onclick="navigate('pixelart','Pixel Art','Shaders Pixel')">
+          <span class="icon">🌈</span>shader_pixel.gdshader
+        </div>
+      </div>
+    </div>
+
+    <div class="tree-section" data-section="sistemas">
+      <div class="tree-section-title" onclick="toggleSection(this)">
+        <span class="arrow">▶</span> 06_sistemas
+      </div>
+      <div class="tree-items">
+        <div class="tree-item" onclick="navigate('sistemas','Sistemas','Save/Load')">
+          <span class="icon">💾</span>save_system.gd
+        </div>
+        <div class="tree-item" onclick="navigate('sistemas','Sistemas','HUD & UI')">
+          <span class="icon">📊</span>hud.gd
+        </div>
+        <div class="tree-item" onclick="navigate('sistemas','Sistemas','Audio')">
+          <span class="icon">🔊</span>audio_manager.gd
+        </div>
+        <div class="tree-item" onclick="navigate('sistemas','Sistemas','Autoloads')">
+          <span class="icon">🌐</span>autoload.gd
+        </div>
+      </div>
+    </div>
+
+    <div class="tree-section" data-section="reference">
+      <div class="tree-section-title" onclick="toggleSection(this)">
+        <span class="arrow">▶</span> 07_referencia
+      </div>
+      <div class="tree-items">
+        <div class="tree-item" onclick="navigate('reference','Referencia','Cheat Sheet')">
+          <span class="icon">📋</span>cheatsheet.gd
+        </div>
+        <div class="tree-item" onclick="navigate('reference','Referencia','Patrones comunes')">
+          <span class="icon">🔄</span>patterns.gd
+        </div>
+        <div class="tree-item" onclick="navigate('reference','Referencia','Recursos externos')">
+          <span class="icon">🔗</span>resources.md
+        </div>
+      </div>
+    </div>
+
+    <div class="tree-section" data-section="build">
+      <div class="tree-section-title" onclick="toggleSection(this)">
+        <span class="arrow">▶</span> 08_build_the_game
+      </div>
+      <div class="tree-items">
+        <div class="tree-item" onclick="navigate('build','Build the Game','Blueprint')">
+          <span class="icon">🏗️</span>blueprint.gd
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /tree -->
+</nav>
+
+<!-- MAIN -->
+<main id="main">
+  <div class="top-bar">
+    <div class="breadcrumb">
+      <span>res://</span>
+      <span class="sep">›</span>
+      <span id="bc-section">Introducción</span>
+      <span class="sep">›</span>
+      <span class="current" id="bc-page">El Entorno</span>
+    </div>
+    <div class="controls">
+      <label class="code-only-switch" title="Hide explanatory text and show only code blocks">
+        <input id="code-only-toggle" type="checkbox" onchange="toggleCodeOnly(this.checked)">
+        <span>Code-Only</span>
+      </label>
+      <div class="progress-indicator">
+        <span id="progress-text">0%</span>
+        <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progress-fill"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ======================================================
+         HERO
+    ====================================================== -->
+    <div class="hero">
+      <div class="scanlines"></div>
+      <div class="hero-eyebrow">Guía interactiva completa</div>
+      <h1>Aprende <span class="accent">GDScript</span><br>Haz tu <span class="accent2">Metroidvania</span></h1>
+      <p>
+        A dark course index for Godot 4: reference material stays functional, while action moments become poster-scale brutalist markers.
+      </p>
+      <div class="hero-index">
+        <div class="hero-index-item" data-num="00" style="--phase-a:rgba(59,99,160,.82);--phase-b:rgba(13,17,23,.95);" onclick="navigate('intro','Introducción','El Entorno')">
+          <div class="hero-index-label">Introducción</div>
+          <div class="hero-index-meta">el entorno / instalación / editor</div>
+          <div class="hero-index-meta">enter</div>
+        </div>
+        <div class="hero-index-item" data-num="01" style="--phase-a:rgba(126,202,76,.72);--phase-b:rgba(13,17,23,.95);" onclick="navigate('gdscript','GDScript Bases','Variables y Tipos')">
+          <div class="hero-index-label">GDScript</div>
+          <div class="hero-index-meta">variables / funciones / control</div>
+          <div class="hero-index-meta">enter</div>
+        </div>
+        <div class="hero-index-item" data-num="02" style="--phase-a:rgba(79,195,247,.66);--phase-b:rgba(13,17,23,.95);" onclick="navigate('nodes','Nodos y Escenas','Árbol de Nodos')">
+          <div class="hero-index-label">Nodos</div>
+          <div class="hero-index-meta">scene tree / signals / groups</div>
+          <div class="hero-index-meta">enter</div>
+        </div>
+        <div class="hero-index-item" data-num="03" style="--phase-a:rgba(169,123,255,.7);--phase-b:rgba(13,17,23,.95);" onclick="navigate('player','Jugador 2D','CharacterBody2D')">
+          <div class="hero-index-label">Player</div>
+          <div class="hero-index-meta">movement / animations / camera</div>
+          <div class="hero-index-meta">enter</div>
+        </div>
+        <div class="hero-index-item" data-num="04" style="--phase-a:rgba(255,123,114,.66);--phase-b:rgba(13,17,23,.95);" onclick="navigate('metroidvania','Metroidvania','Diseño de Salas')">
+          <div class="hero-index-label">World</div>
+          <div class="hero-index-meta">rooms / tilemap / enemies</div>
+          <div class="hero-index-meta">enter</div>
+        </div>
+        <div class="hero-index-item" data-num="05" style="--phase-a:rgba(79,195,247,.56);--phase-b:rgba(13,17,23,.95);" onclick="navigate('pixelart','Pixel Art','Config Proyecto')">
+          <div class="hero-index-label">Pixel Art</div>
+          <div class="hero-index-meta">imports / sprites / lighting</div>
+          <div class="hero-index-meta">enter</div>
+        </div>
+        <div class="hero-index-item" data-num="06" style="--phase-a:rgba(227,179,65,.68);--phase-b:rgba(13,17,23,.95);" onclick="navigate('sistemas','Sistemas','Save/Load')">
+          <div class="hero-index-label">Systems</div>
+          <div class="hero-index-meta">save / hud / audio / autoloads</div>
+          <div class="hero-index-meta">enter</div>
+        </div>
+        <div class="hero-index-item" data-num="07" style="--phase-a:rgba(255,255,255,.36);--phase-b:rgba(13,17,23,.95);" onclick="navigate('reference','Referencia','Cheat Sheet')">
+          <div class="hero-index-label">Reference</div>
+          <div class="hero-index-meta">cheat sheet / patterns / links</div>
+          <div class="hero-index-meta">enter</div>
+        </div>
+        <div class="hero-index-item" data-num="08" style="--phase-a:rgba(192,201,214,.56);--phase-b:rgba(13,17,23,.95);" onclick="navigate('build','Build the Game','Blueprint')">
+          <div class="hero-index-label">Blueprint</div>
+          <div class="hero-index-meta">8 phases / diagrams / tests</div>
+          <div class="hero-index-meta">enter</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================
+         SECTION: INTRO
+    ====================================================== -->
+    <div id="section-intro" class="section active-section">
+
+      <!-- Bienvenida -->
+      <div id="page-El Entorno">
+        <div class="section-header">
+          <span class="section-number">00</span>
+          <div>
+            <div class="section-title">Bienvenida <span class="dim">// El entorno Godot</span></div>
+          </div>
+        </div>
+        <p>
+          Godot 4 es un motor de videojuegos open source con un lenguaje propio llamado <strong>GDScript</strong>, diseñado para ser legible, rápido y muy integrado con el editor. Su sintaxis es similar a Python pero con tipos opcionales y acceso directo al engine.
+        </p>
+        <div class="cards">
+          <div class="card">
+            <div class="card-icon">⚡</div>
+            <div class="card-title">Sin licencias</div>
+            <div class="card-desc">Godot es 100% libre y gratuito. Sin regalías ni restricciones comerciales.</div>
+          </div>
+          <div class="card">
+            <div class="card-icon">🐍</div>
+            <div class="card-title">GDScript simple</div>
+            <div class="card-desc">Sintaxis parecida a Python. Tipado estático opcional para mayor performance.</div>
+          </div>
+          <div class="card">
+            <div class="card-icon">🎮</div>
+            <div class="card-title">2D nativo</div>
+            <div class="card-desc">Sistema 2D completamente separado del 3D, con TileMap, física y shaders propios.</div>
+          </div>
+          <div class="card">
+            <div class="card-icon">🔗</div>
+            <div class="card-title">Señales (Events)</div>
+            <div class="card-desc">Sistema de signals para comunicación entre nodos sin acoplamiento fuerte.</div>
+          </div>
+        </div>
+
+        <h2>Árbol de nodos (Scene Tree)</h2>
+        <p>Todo en Godot son <strong>nodos</strong>. Los nodos se organizan en <strong>escenas</strong> jerárquicas. Una escena puede instanciarse dentro de otra, como si fueran prefabs.</p>
+        <div class="node-tree">
+          <div class="node-row"><span class="nname">🌲 World</span><span class="ntype">Node2D</span></div>
+          <div class="node-row"><span class="indent">├─</span><span class="nicon">🧍</span><span class="nname">Player</span><span class="ntype">CharacterBody2D</span></div>
+          <div class="node-row"><span class="indent">│  ├─</span><span class="nicon">✨</span><span class="nname">Sprite</span><span class="ntype">AnimatedSprite2D</span></div>
+          <div class="node-row"><span class="indent">│  └─</span><span class="nicon">💥</span><span class="nname">CollisionShape</span><span class="ntype">CollisionShape2D</span></div>
+          <div class="node-row"><span class="indent">├─</span><span class="nicon">🗺️</span><span class="nname">TileMap</span><span class="ntype">TileMapLayer</span></div>
+          <div class="node-row"><span class="indent">└─</span><span class="nicon">📷</span><span class="nname">Camera2D</span><span class="ntype">Camera2D</span></div>
+        </div>
+
+        <div class="tip">
+          <strong>💡 Tip:</strong> En Godot 4.3+ el nodo <code class="inline">TileMap</code> fue reemplazado por <code class="inline">TileMapLayer</code>. Cada capa es un nodo separado, lo que permite mejor control por capas.
+        </div>
+      </div>
+
+      <!-- Instalación -->
+      <div id="page-Instalación" style="display:none">
+        <div class="section-header">
+          <span class="section-number">00</span>
+          <div><div class="section-title">Instalación <span class="dim">// Setup del proyecto</span></div></div>
+        </div>
+        <h2>Descarga e instalación</h2>
+        <p>Godot 4 no requiere instalación. Es un ejecutable portátil. Descárgalo desde <strong>godotengine.org</strong>. Elige la versión <strong>estándar</strong> (no .NET salvo que necesites C#).</p>
+        <div class="checklist">
+          <li onclick="toggleCheck(this)"><span class="cb"></span>Descargar Godot 4.x desde godotengine.org</li>
+          <li onclick="toggleCheck(this)"><span class="cb"></span>Crear carpeta de proyecto (sin espacios ni tildes en la ruta)</li>
+          <li onclick="toggleCheck(this)"><span class="cb"></span>Abrir Godot → New Project → seleccionar carpeta</li>
+          <li onclick="toggleCheck(this)"><span class="cb"></span>Elegir "Mobile" o "Forward+" renderer (Forward+ para shaders avanzados)</li>
+          <li onclick="toggleCheck(this)"><span class="cb"></span>Crear primera escena: Node2D como raíz</li>
+          <li onclick="toggleCheck(this)"><span class="cb"></span>Guardar escena como <code class="inline">main.tscn</code></li>
+        </div>
+        <h2>Configuración para Pixel Art</h2>
+        <p>Antes de hacer cualquier sprite, configura el proyecto para pixel art:</p>
+        <div class="code-block">
+          <div class="code-block-header">
+            <span class="lang">project.godot</span>
+            <span class="file-name">Project Settings → clave y valor</span>
+            <button class="copy-btn" onclick="copyCode(this)">Copiar</button>
+          </div>
+          <pre><code><span class="cm"># Project Settings → Rendering → Textures</span>
+default_texture_filter = <span class="str">"Nearest"</span>
+
+<span class="cm"># Project Settings → Display → Window</span>
+viewport_width  = <span class="num">320</span>   <span class="cm"># resolución interna baja</span>
+viewport_height = <span class="num">180</span>
+stretch_mode    = <span class="str">"canvas_items"</span>   <span class="cm"># escala pixel perfect</span>
+stretch_aspect  = <span class="str">"keep"</span></code></pre>
+        </div>
+        <div class="warning">
+          <strong>⚠️ Importante:</strong> Si no configuras <code class="inline">Nearest</code> como filtro de textura, los sprites tendrán antialiasing y se verán borrosos al escalar.
+        </div>
+      </div>
+
+      <!-- Editor -->
+      <div id="page-Editor" style="display:none">
+        <div class="section-header">
+          <span class="section-number">00</span>
+          <div><div class="section-title">El Editor <span class="dim">// Zonas clave</span></div></div>
+        </div>
+        <h2>Zonas del editor Godot</h2>
+        <table class="data-table">
+          <thead><tr><th>Zona</th><th>Descripción</th><th>Shortcut</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Scene Tree</strong></td><td>Árbol de nodos de la escena activa</td><td>—</td></tr>
+            <tr><td><strong>Inspector</strong></td><td>Propiedades del nodo seleccionado</td><td>—</td></tr>
+            <tr><td><strong>FileSystem</strong></td><td>Archivos del proyecto (res://)</td><td>—</td></tr>
+            <tr><td><strong>Viewport 2D</strong></td><td>Vista previa y edición visual</td><td><code>F1</code></td></tr>
+            <tr><td><strong>Script Editor</strong></td><td>Editor de código GDScript</td><td><code>F3</code> / <code>Ctrl+`</code></td></tr>
+            <tr><td><strong>Output</strong></td><td>Mensajes de print y errores</td><td>—</td></tr>
+            <tr><td><strong>Debugger</strong></td><td>Breakpoints, variables, profiler</td><td><code>F5</code> juego</td></tr>
+          </tbody>
+        </table>
+        <h2>Atajos esenciales</h2>
+        <table class="data-table">
+          <thead><tr><th>Acción</th><th>Shortcut</th></tr></thead>
+          <tbody>
+            <tr><td>Ejecutar juego</td><td><code>F5</code></td></tr>
+            <tr><td>Ejecutar escena actual</td><td><code>F6</code></td></tr>
+            <tr><td>Pausar juego</td><td><code>F7</code></td></tr>
+            <tr><td>Ir al script del nodo seleccionado</td><td><code>Ctrl+Alt+S</code></td></tr>
+            <tr><td>Autocompletar</td><td><code>Ctrl+Space</code></td></tr>
+            <tr><td>Duplicar nodo</td><td><code>Ctrl+D</code></td></tr>
+            <tr><td>Instanciar escena</td><td><code>Ctrl+Shift+A</code></td></tr>
+            <tr><td>Guardar todos</td><td><code>Ctrl+Shift+S</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="nav-footer">
+        <div></div>
+        <button class="nav-btn right" onclick="navigate('gdscript','GDScript Bases','Variables y Tipos')">
+          <span class="nav-dir">Siguiente →</span>
+          <span>Variables y Tipos</span>
+        </button>
+      </div>
+    </div><!-- /section-intro -->
+
+    <!-- ======================================================
+         SECTION: GDSCRIPT BASES
+    ====================================================== -->
+    <div id="section-gdscript" class="section">
+
+      <div id="page-Variables y Tipos">
+        <div class="section-header">
+          <span class="section-number">01</span>
+          <div><div class="section-title">GDScript <span class="dim">// Variables y Tipos</span></div></div>
+        </div>
+        <div class="code-block">
+          <div class="code-block-header">
+            <span class="lang">GDScript</span>
+            <span class="file-name">variables.gd</span>
+            <button class="copy-btn" onclick="copyCode(this)">Copiar</button>
+          </div>
+          <pre><code><span class="kw">extends</span> <span class="cls">Node</span>
+
+<span class="cm"># ── Variables tipadas (recomendado en Godot 4) ──</span>
+<span class="kw">var</span> <span class="var">nombre</span>: <span class="cls">String</span>  = <span class="str">"Link"</span>
+<span class="kw">var</span> <span class="var">vida</span>: <span class="cls">int</span>      = <span class="num">100</span>
+<span class="kw">var</span> <span class="var">velocidad</span>: <span class="cls">float</span> = <span class="num">150.0</span>
+<span class="kw">var</span> <span class="var">activo</span>: <span class="cls">bool</span>  = <span class="kw">true</span>
+
+<span class="cm"># ── Constantes ──</span>
+<span class="kw">const</span> <span class="var">GRAVEDAD</span>: <span class="cls">float</span> = <span class="num">980.0</span>
+<span class="kw">const</span> <span class="var">MAX_VIDA</span>: <span class="cls">int</span>   = <span class="num">100</span>
+
+<span class="cm"># ── Tipos de Godot ──</span>
+<span class="kw">var</span> <span class="var">posicion</span>: <span class="cls">Vector2</span>  = <span class="cls">Vector2</span>(<span class="num">100</span>, <span class="num">200</span>)
+<span class="kw">var</span> <span class="var">color</span>: <span class="cls">Color</span>      = <span class="cls">Color</span>.<span class="var">RED</span>
+<span class="kw">var</span> <span class="var">nodo_ref</span>: <span class="cls">Node2D</span>   <span class="cm"># referencia a nodo, null por defecto</span>
+<span class="kw">var</span> <span class="var">rect</span>: <span class="cls">Rect2</span>        = <span class="cls">Rect2</span>(<span class="num">0</span>, <span class="num">0</span>, <span class="num">64</span>, <span class="num">64</span>)
+
+<span class="cm"># ── @export: expone la variable en el Inspector ──</span>
+<span class="kw">@export</span> <span class="kw">var</span> <span class="var">jump_force</span>: <span class="cls">float</span> = <span class="num">400.0</span>
+<span class="kw">@export</span> <span class="kw">var</span> <span class="var">spritesheet</span>: <span class="cls">Texture2D</span>
+
+<span class="cm"># ── @onready: asigna referencia cuando el nodo entra al árbol ──</span>
+<span class="kw">@onready</span> <span class="kw">var</span> <span class="var">sprite</span>: <span class="cls">AnimatedSprite2D</span> = $<span class="var">AnimatedSprite2D</span>
+<span class="kw">@onready</span> <span class="kw">var</span> <span class="var">audio</span>: <span class="cls">AudioStreamPlayer2D</span> = $<span class="var">SFX</span></code></pre>
+        </div>
+
+        <h2>Tipos especiales de Godot</h2>
+        <table class="data-table">
+          <thead><tr><th>Tipo</th><th>Uso</th><th>Ejemplo</th></tr></thead>
+          <tbody>
+            <tr><td class="type">Vector2</td><td>Posición, dirección 2D</td><td><code>Vector2(x, y)</code></td></tr>
+            <tr><td class="type">Vector2i</td><td>Coordenadas enteras (TileMap)</td><td><code>Vector2i(2, 3)</code></td></tr>
+            <tr><td class="type">Rect2</td><td>Rectángulo (x,y,w,h)</td><td><code>Rect2(0,0,64,64)</code></td></tr>
+            <tr><td class="type">Color</td><td>RGBA</td><td><code>Color(1,0,0,1)</code></td></tr>
+            <tr><td class="type">NodePath</td><td>Ruta a un nodo</td><td><code>@"../Player"</code></td></tr>
+            <tr><td class="type">Array[T]</td><td>Array tipado</td><td><code>Array[int]</code></td></tr>
+            <tr><td class="type">Dictionary</td><td>Mapa clave→valor</td><td><code>{"vida": 100}</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div id="page-Funciones" style="display:none">
+        <div class="section-header">
+          <span class="section-number">01</span>
+          <div><div class="section-title">GDScript <span class="dim">// Funciones</span></div></div>
+        </div>
+        <div class="code-block">
+          <div class="code-block-header">
+            <span class="lang">GDScript</span>
+            <span class="file-name">funciones.gd</span>
+            <button class="copy-btn" onclick="copyCode(this)">Copiar</button>
+          </div>
+          <pre><code><span class="kw">extends</span> <span class="cls">Node</span>
+
+<span class="cm"># ── Funciones del ciclo de vida (built-in) ──</span>
+<span class="kw">func</span> <span class="fn">_ready</span>() -> <span class="kw">void</span>:
+    <span class="cm"># Se llama una vez cuando el nodo entra al SceneTree</span>
+    print(<span class="str">"¡Nodo listo!"</span>)
+
+<span class="kw">func</span> <span class="fn">_process</span>(<span class="var">delta</span>: <span class="cls">float</span>) -> <span class="kw">void</span>:
+    <span class="cm"># Se llama cada frame. delta = tiempo desde el frame anterior</span>
+    <span class="cm"># Ideal para lógica visual, no para física</span>
+    <span class="kw">pass</span>
+
+<span class="kw">func</span> <span class="fn">_physics_process</span>(<span class="var">delta</span>: <span class="cls">float</span>) -> <span class="kw">void</span>:
+    <span class="cm"># Se llama a ritmo fijo (60fps). Ideal para física y movimiento</span>
+    <span class="kw">pass</span>
+
+<span class="kw">func</span> <span class="fn">_input</span>(<span class="var">event</span>: <span class="cls">InputEvent</span>) -> <span class="kw">void</span>:
+    <span class="cm"># Captura cualquier input del jugador</span>
+    <span class="kw">if</span> <span class="var">event</span>.is_action_pressed(<span class="str">"jump"</span>):
+        <span class="fn">saltar</span>()
+
+<span class="cm"># ── Función personalizada con retorno ──</span>
+<span class="kw">func</span> <span class="fn">calcular_dano</span>(<span class="var">base</span>: <span class="cls">int</span>, <span class="var">multiplicador</span>: <span class="cls">float</span> = <span class="num">1.0</span>) -> <span class="cls">int</span>:
+    <span class="kw">return</span> <span class="cls">int</span>(<span class="var">base</span> * <span class="var">multiplicador</span>)
+
+<span class="cm"># ── Lambda (Callable) ──</span>
+<span class="kw">var</span> <span class="var">on_die</span>: <span class="cls">Callable</span> = <span class="kw">func</span>(): print(<span class="str">"muerto"</span>)
+
+<span class="cm"># ── Funciones estáticas ──</span>
+<span class="kw">static</span> <span class="kw">func</span> <span class="fn">distancia</span>(<span class="var">a</span>: <span class="cls">Vector2</span>, <span class="var">b</span>: <span class="cls">Vector2</span>) -> <span class="cls">float</span>:
+    <span class="kw">return</span> <span class="var">a</span>.distance_to(<span class="var">b</span>)
+
+<span class="kw">func</span> <span class="fn">saltar</span>() -> <span class="kw">void</span>:
+    print(<span class="str">"¡Salto!"</span>)</code></pre>
+        </div>
+        <div class="info">
+          <strong>ℹ️</strong> Usa <code class="inline">_physics_process</code> para movimiento del jugador. Usa <code class="inline">_process</code> para cosas visuales como tweens o UI. Mezclarlos puede causar jitter.
+        </div>
+      </div>
+
+      <div id="page-Control de Flujo" style="display:none">
+        <div class="section-header">
+          <span class="section-number">01</span>
+          <div><div class="section-title">GDScript <span class="dim">// Control de Flujo</span></div></div>
+        </div>
+        <div class="code-block">
+          <div class="code-block-header">
+            <span class="lang">GDScript</span>
+            <span class="file-name">control_flujo.gd</span>
+            <button class="copy-btn" onclick="copyCode(this)">Copiar</button>
+          </div>
+          <pre><code><span class="cm"># ── if / elif / else ──</span>
+<span class="kw">if</span> <span class="var">vida</span> <= <span class="num">0</span>:
+    <span class="fn">morir</span>()
+<span class="kw">elif</span> <span class="var">vida</span> < <span class="num">20</span>:
+    <span class="fn">estado_critico</span>()
+<span class="kw">else</span>:
+    <span class="fn">estado_normal</span>()
+
+<span class="cm"># ── match (equivale al switch) ──</span>
+<span class="kw">match</span> <span class="var">estado</span>:
+    <span class="str">"idle"</span>:
+        <span class="fn">update_idle</span>()
+    <span class="str">"run"</span>:
+        <span class="fn">update_run</span>()
+    <span class="str">"jump"</span>, <span class="str">"fall"</span>:    <span class="cm"># múltiples valores</span>
+        <span class="fn">update_air</span>()
+    _:                 <span class="cm"># default</span>
+        <span class="fn">update_idle</span>()
+
+<span class="cm"># ── for ──</span>
+<span class="kw">for</span> <span class="var">i</span> <span class="kw">in</span> range(<span class="num">5</span>):        <span class="cm"># 0,1,2,3,4</span>
+    print(<span class="var">i</span>)
+
+<span class="kw">for</span> <span class="var">enemigo</span> <span class="kw">in</span> get_tree().get_nodes_in_group(<span class="str">"enemies"</span>):
+    <span class="var">enemigo</span>.take_damage(<span class="num">10</span>)
+
+<span class="cm"># ── while ──</span>
+<span class="kw">while</span> <span class="var">municion</span> > <span class="num">0</span>:
+    <span class="fn">disparar</span>()
+    <span class="var">municion</span> -= <span class="num">1</span>
+
+<span class="cm"># ── Operador ternario ──</span>
+<span class="kw">var</span> <span class="var">texto</span> = <span class="str">"vivo"</span> <span class="kw">if</span> <span class="var">vida</span> > <span class="num">0</span> <span class="kw">else</span> <span class="str">"muerto"</span></code></pre>
+        </div>
+      </div>
+
+      <div id="page-Arrays y Diccionarios" style="display:none">
+        <div class="section-header">
+          <span class="section-number">01</span>
+          <div><div class="section-title">GDScript <span class="dim">// Colecciones</span></div></div>
+        </div>
+        <div class="code-block">
+          <div class="code-block-header">
+            <span class="lang">GDScript</span>
+            <span class="file-name">colecciones.gd</span>
+            <button class="copy-btn" onclick="copyCode(this)">Copiar</button>
+          </div>
+          <pre><code><span class="cm"># ── Array ──</span>
+<span class="kw">var</span> <span class="var">items</span>: <span class="cls">Array</span>[<span class="cls">String</span>] = [<span class="str">"espada"</span>, <span class="str">"escudo"</span>, <span class="str">"pocion"</span>]
+<span class="var">items</span>.append(<span class="str">"llave"</span>)       <span class="cm"># agregar al final</span>
+<span class="var">items</span>.erase(<span class="str">"escudo"</span>)      <span class="cm"># eliminar por valor</span>
+<span class="var">items</span>.remove_at(<span class="num">0</span>)        <span class="cm"># eliminar por índice</span>
+print(<span class="var">items</span>.size())        <span class="cm"># tamaño</span>
+print(<span class="var">items</span>.has(<span class="str">"llave"</span>))  <span class="cm"># contiene</span>
+
+<span class="cm"># ── Dictionary ──</span>
+<span class="kw">var</span> <span class="var">stats</span>: <span class="cls">Dictionary</span> = {
+    <span class="str">"vida"</span>: <span class="num">100</span>,
+    <span class="str">"ataque"</span>: <span class="num">15</span>,
+    <span class="str">"defensa"</span>: <span class="num">5</span>
+}
+<span class="var">stats</span>[<span class="str">"velocidad"</span>] = <span class="num">200</span>       <span class="cm"># agregar/modificar</span>
+print(<span class="var">stats</span>.get(<span class="str">"vida"</span>, <span class="num">0</span>))    <span class="cm"># con valor por defecto</span>
+<span class="var">stats</span>.erase(<span class="str">"defensa"</span>)          <span class="cm"># eliminar clave</span>
+
+<span class="cm"># ── Iterar diccionario ──</span>
+<span class="kw">for</span> <span class="var">clave</span> <span class="kw">in</span> <span class="var">stats</span>:
+    print(<span class="var">clave</span>, <span class="str">": "</span>, <span class="var">stats</span>[<span class="var">clave</span>])
+
+<span class="cm"># ── Útil en metroidvania: inventario ──</span>
+<span class="kw">var</span> <span class="var">habilidades</span>: <span class="cls">Dictionary</span> = {
+    <span class="str">"doble_salto"</span>: <span class="kw">false</span>,
+    <span class="str">"dash"</span>: <span class="kw">false</span>,
+    <span class="str">"wall_jump"</span>: <span class="kw">false</span>,
+    <span class="str">"grapple"</span>: <span class="kw">false</span>
+}</code></pre>
+        </div>
+      </div>
+
+      <div id="page-Clases y POO" style="display:none">
+        <div class="section-header">
+          <span class="section-number">01</span>
+          <div><div class="section-title">GDScript <span class="dim">// Clases y POO</span></div></div>
+        </div>
+        <div class="code-block">
+          <div class="code-block-header">
+            <span class="lang">GDScript</span>
+            <span class="file-name">clases.gd</span>
+            <button class="copy-btn" onclick="copyCode(this)">Copiar</button>
+          </div>
+          <pre><code><span class="cm"># ── Clase interna ──</span>
+<span class="kw">class</span> <span class="cls">Objeto</span>:
+    <span class="kw">var</span> <span class="var">nombre</span>: <span class="cls">String</span>
+    <span class="kw">var</span> <span class="var">cantidad</span>: <span class="cls">int</span> = <span class="num">1</span>
+
+    <span class="kw">func</span> <span class="fn">_init</span>(<span class="var">n</span>: <span class="cls">String</span>, <span class="var">c</span>: <span class="cls">int</span> = <span class="num">1</span>) -> <span class="kw">void</span>:
+        <span class="var">nombre</span> = <span class="var">n</span>
+        <span class="var">cantidad</span> = <span class="var">c</span>
+
+    <span class="kw">func</span> <span class="fn">to_string</span>() -> <span class="cls">String</span>:
+        <span class="kw">return</span> <span class="str">"%s x%d"</span> % [<span class="var">nombre</span>, <span class="var">cantidad</span>]
+
+<span class="cm"># ── Herencia con extends ──</span>
+<span class="kw">class</span> <span class="cls">Arma</span> <span class="kw">extends</span> <span class="cls">Objeto</span>:
+    <span class="kw">var</span> <span class="var">dano</span>: <span class="cls">int</span> = <span class="num">10</span>
+
+    <span class="kw">func</span> <span class="fn">atacar</span>() -> <span class="cls">int</span>:
+        <span class="kw">return</span> <span class="var">dano</span>
+
+<span class="cm"># ── Uso de la clase ──</span>
+<span class="kw">func</span> <span class="fn">_ready</span>() -> <span class="kw">void</span>:
+    <span class="kw">var</span> <span class="var">espada</span> = <span class="cls">Arma</span>.new(<span class="str">"Espada Maestra"</span>)
+    <span class="var">espada</span>.<span class="var">dano</span> = <span class="num">25</span>
+    print(<span class="var">espada</span>.to_string())   <span class="cm"># "Espada Maestra x1"</span>
+
+<span class="cm"># ── Script como clase (class_name) ──</span>
+<span class="cm"># En Enemy.gd:</span>
+<span class="kw">class_name</span> <span class="cls">Enemy</span>
+<span class="kw">extends</span> <span class="cls">CharacterBody2D</span>
+<span class="cm"># Ahora puedes hacer: var e: Enemy en otros scripts</span></code></pre>
+        </div>
+        <div class="quiz">
+          <div class="quiz-q">¿Cuál anotación expone una variable en el Inspector de Godot?</div>
+          <div class="quiz-options">
+            <div class="quiz-opt" onclick="answer(this, false)"><span>A</span> <code>@onready</code></div>
+            <div class="quiz-opt" onclick="answer(this, true)"><span>B</span> <code>@export</code></div>
+            <div class="quiz-opt" onclick="answer(this, false)"><span>C</span> <code>@static</code></div>
+            <div class="quiz-opt" onclick="answer(this, false)"><span>D</span> <code>@signal</code></div>
+          </div>
+          <div class="quiz-feedback"></div>
+        </div>
+      </div>
+
+      <div class="nav-footer">
+        <button class="nav-btn" onclick="navigate('intro','Introducción','Editor')">
+          <span class="nav-dir">← Anterior</span>
+          <span>Editor Godot</span>
+        </button>
+        <button class="nav-btn right" onclick="navigate('nodes','Nodos y Escenas','Árbol de Nodos')">
+          <span class="nav-dir">Siguiente →</span>
+          <span>Árbol de Nodos</span>
+        </button>
+      </div>
+    </div><!-- /section-gdscript -->
+
+    <!-- ======================================================
+         SECTION: NODES
+    ====================================================== -->
+    <div id="section-nodes" class="section">
+
+      <div id="page-Árbol de Nodos">
+        <div class="section-header">
+          <span class="section-number">02</span>
+          <div><div class="section-title">Nodos y Escenas <span class="dim">// El árbol</span></div></div>
+        </div>
+        <p>Cada entidad en Godot es un <strong>Nodo</strong>. Los nodos se componen para formar <strong>Escenas</strong>. Una escena es como un "prefab" reutilizable.</p>
+        <h2>Acceder a nodos</h2>
+        <div class="code-block">
+          <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">acceso_nodos.gd</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+          <pre><code><span class="cm"># ── Formas de referenciar nodos ──</span>
+<span class="kw">@onready</span> <span class="kw">var</span> <span class="var">sprite</span> = $<span class="var">Sprite2D</span>                  <span class="cm"># hijo directo</span>
+<span class="kw">@onready</span> <span class="kw">var</span> <span class="var">audio</span>  = $<span class="var">SFX</span>/<span class="var">JumpSound</span>           <span class="cm"># ruta relativa</span>
+<span class="kw">@onready</span> <span class="kw">var</span> <span class="var">ui</span>     = get_node(<span class="str">"/root/UI"</span>)      <span class="cm"># ruta absoluta</span>
+<span class="kw">@onready</span> <span class="kw">var</span> <span class="var">parent</span> = get_parent()              <span class="cm"># padre</span>
+
+<span class="cm"># ── Crear nodo en runtime ──</span>
+<span class="kw">var</span> <span class="var">bullet</span> = preload(<span class="str">"res://scenes/Bullet.tscn"</span>).instantiate()
+<span class="var">bullet</span>.<span class="var">global_position</span> = <span class="var">global_position</span>
+get_parent().add_child(<span class="var">bullet</span>)
+
+<span class="cm"># ── Eliminar nodo ──</span>
+queue_free()           <span class="cm"># al final del frame (seguro)</span>
+
+<span class="cm"># ── Comprobar si existe ──</span>
+<span class="kw">if</span> has_node(<span class="str">"HitBox"</span>):
+    $<span class="var">HitBox</span>.monitoring = <span class="kw">true</span></code></pre>
+        </div>
+      </div>
+
+      <div id="page-Señales" style="display:none">
+        <div class="section-header">
+          <span class="section-number">02</span>
+          <div><div class="section-title">Nodos y Escenas <span class="dim">// Señales (Signals)</span></div></div>
+        </div>
+        <p>Las <strong>signals</strong> son el sistema de eventos de Godot. Permiten que un nodo notifique a otros sin conocerlos directamente (bajo acoplamiento).</p>
+        <div class="code-block">
+          <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">signals.gd</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+          <pre><code><span class="cm"># ── Definir una signal propia ──</span>
+<span class="kw">signal</span> <span class="var">player_died</span>
+<span class="kw">signal</span> <span class="var">health_changed</span>(<span class="var">new_health</span>: <span class="cls">int</span>)
+<span class="kw">signal</span> <span class="var">ability_unlocked</span>(<span class="var">ability_name</span>: <span class="cls">String</span>)
+
+<span class="cm"># ── Emitir la signal ──</span>
+<span class="kw">func</span> <span class="fn">take_damage</span>(<span class="var">amount</span>: <span class="cls">int</span>) -> <span class="kw">void</span>:
+    <span class="var">health</span> -= <span class="var">amount</span>
+    health_changed.emit(<span class="var">health</span>)   <span class="cm"># notifica a todos</span>
+    <span class="kw">if</span> <span class="var">health</span> <= <span class="num">0</span>:
+        player_died.emit()
+
+<span class="cm"># ── Conectar en código ──</span>
+<span class="kw">func</span> <span class="fn">_ready</span>() -> <span class="kw">void</span>:
+    <span class="cm"># Conectar signal propia al HUD</span>
+    health_changed.connect($<span class="var">HUD</span>.on_health_changed)
+
+    <span class="cm"># Señal de área (built-in)</span>
+    $<span class="var">HitBox</span>.body_entered.connect(_on_hitbox_body_entered)
+
+    <span class="cm"># Con lambda</span>
+    player_died.connect(<span class="kw">func</span>(): <span class="fn">_show_game_over</span>())
+
+<span class="cm"># ── Receptor ──</span>
+<span class="kw">func</span> <span class="fn">_on_hitbox_body_entered</span>(<span class="var">body</span>: <span class="cls">Node2D</span>) -> <span class="kw">void</span>:
+    <span class="kw">if</span> <span class="var">body</span>.is_in_group(<span class="str">"enemies"</span>):
+        take_damage(<span class="num">10</span>)</code></pre>
+        </div>
+        <div class="tip"><strong>💡 Patrón clave Metroidvania:</strong> Usa signals para que puertas, checkpoints y coleccionables notifiquen al GameManager sin referencias directas.</div>
+      </div>
+
+      <div id="page-Grupos" style="display:none">
+        <div class="section-header">
+          <span class="section-number">02</span>
+          <div><div class="section-title">Nodos y Escenas <span class="dim">// Grupos</span></div></div>
+        </div>
+        <div class="code-block">
+          <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">grupos.gd</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+          <pre><code><span class="cm"># Añadir a grupo (también se puede desde el Inspector)</span>
+<span class="kw">func</span> <span class="fn">_ready</span>() -> <span class="kw">void</span>:
+    add_to_group(<span class="str">"enemies"</span>)
+    add_to_group(<span class="str">"destructible"</span>)
+
+<span class="cm"># ── Verificar membresía ──</span>
+<span class="kw">if</span> <span class="var">body</span>.is_in_group(<span class="str">"enemies"</span>):
+    <span class="var">body</span>.take_damage(<span class="num">20</span>)
+
+<span class="cm"># ── Mandar mensaje a todo el grupo ──</span>
+get_tree().call_group(<span class="str">"enemies"</span>, <span class="str">"freeze"</span>)       <span class="cm"># pausa todos</span>
+get_tree().call_group(<span class="str">"destructible"</span>, <span class="str">"explode"</span>)
+
+<span class="cm"># ── Obtener todos los nodos del grupo ──</span>
+<span class="kw">var</span> <span class="var">all_enemies</span> = get_tree().get_nodes_in_group(<span class="str">"enemies"</span>)
+print(<span class="str">"Enemigos vivos: "</span>, <span class="var">all_enemies</span>.size())</code></pre>
+        </div>
+      </div>
+
+      <div id="page-Instancias" style="display:none">
+        <div class="section-header">
+          <span class="section-number">02</span>
+          <div><div class="section-title">Nodos y Escenas <span class="dim">// Instancias</span></div></div>
+        </div>
+        <div class="code-block">
+          <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">instancias.gd</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+          <pre><code><span class="cm"># ── preload vs load ──</span>
+<span class="cm"># preload: en tiempo de compilación (usa para escenas que siempre necesitas)</span>
+<span class="kw">const</span> <span class="var">BULLET_SCENE</span> = preload(<span class="str">"res://scenes/Bullet.tscn"</span>)
+<span class="kw">const</span> <span class="var">ENEMY_SCENE</span>  = preload(<span class="str">"res://scenes/Enemy.tscn"</span>)
+
+<span class="cm"># load: en runtime (usa para contenido opcional o grandes assets)</span>
+<span class="kw">var</span> <span class="var">room</span> = load(<span class="str">"res://rooms/room_b2.tscn"</span>).instantiate()
+
+<span class="cm"># ── Instanciar y posicionar ──</span>
+<span class="kw">func</span> <span class="fn">spawn_enemy</span>(<span class="var">pos</span>: <span class="cls">Vector2</span>) -> <span class="kw">void</span>:
+    <span class="kw">var</span> <span class="var">enemy</span> = <span class="var">ENEMY_SCENE</span>.instantiate()
+    <span class="var">enemy</span>.<span class="var">global_position</span> = <span class="var">pos</span>
+    add_child(<span class="var">enemy</span>)
+
+<span class="cm"># ── Object Pooling (optimización) ──</span>
+<span class="kw">var</span> <span class="var">pool</span>: <span class="cls">Array</span>[<span class="cls">Node</span>] = []
+
+<span class="kw">func</span> <span class="fn">get_from_pool</span>() -> <span class="cls">Node</span>:
+    <span class="kw">if</span> <span class="var">pool</span>.size() > <span class="num">0</span>:
+        <span class="kw">var</span> <span class="var">obj</span> = <span class="var">pool</span>.pop_back()
+        <span class="var">obj</span>.<span class="var">visible</span> = <span class="kw">true</span>
+        <span class="kw">return</span> <span class="var">obj</span>
+    <span class="kw">return</span> <span class="var">BULLET_SCENE</span>.instantiate()</code></pre>
+        </div>
+      </div>
+
+      <div class="nav-footer">
+        <button class="nav-btn" onclick="navigate('gdscript','GDScript Bases','Clases y POO')">
+          <span class="nav-dir">← Anterior</span>
+          <span>Clases y POO</span>
+        </button>
+        <button class="nav-btn right" onclick="navigate('player','Jugador 2D','CharacterBody2D')">
+          <span class="nav-dir">Siguiente →</span>
+          <span>Jugador 2D</span>
+        </button>
+      </div>
+    </div><!-- /section-nodes -->
+
+    <!-- ======================================================
+         SECTION: PLAYER
+    ====================================================== -->
+    <div id="section-player" class="section">
+
+      <div id="page-CharacterBody2D">
+        <div class="section-header">
+          <span class="section-number">03</span>
+          <div><div class="section-title">Jugador 2D <span class="dim">// CharacterBody2D</span></div></div>
+        </div>
+        <p><code class="inline">CharacterBody2D</code> es el nodo base para personajes controlados. Ofrece <code class="inline">move_and_slide()</code> que maneja colisiones automáticamente.</p>
+        <div class="node-tree">
+          <div class="node-row"><span class="nname">🧍 Player</span><span class="ntype">CharacterBody2D</span></div>
+          <div class="node-row"><span class="indent">├─</span><span class="nicon">✨</span><span class="nname">AnimatedSprite2D</span><span class="ntype">AnimatedSprite2D</span></div>
+          <div class="node-row"><span class="indent">├─</span><span class="nicon">💥</span><span class="nname">CollisionShape2D</span><span class="ntype">CollisionShape2D</span></div>
+          <div class="node-row"><span class="indent">├─</span><span class="nicon">📡</span><span class="nname">HurtBox</span><span class="ntype">Area2D</span></div>
+          <div class="node-row"><span class="indent">│  └─</span><span class="nicon">💥</span><span class="nname">HurtShape</span><span class="ntype">CollisionShape2D</span></div>
+          <div class="node-row"><span class="indent">└─</span><span class="nicon">🔊</span><span class="nname">SFX</span><span class="ntype">AudioStreamPlayer2D</span></div>
+        </div>
+        <div class="code-block">
+          <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">Player.gd</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+          <pre><code><span class="kw">extends</span> <span class="cls">CharacterBody2D</span>
+<span class="kw">class_name</span> <span class="cls">Player</span>
+
+<span class="cm"># ── Parámetros ──</span>
+<span class="kw">@export</span> <span class="kw">var</span> <span class="var">speed</span>: <span class="cls">float</span>      = <span class="num">160.0</span>
+<span class="kw">@export</span> <span class="kw">var</span> <span class="var">jump_velocity</span>: <span class="cls">float</span> = -<span class="num">340.0</span>
+<span class="kw">@export</span> <span class="kw">var</span> <span class="var">max_health</span>: <span class="cls">int</span>   = <span class="num">100</span>
+
+<span class="kw">const</span> <span class="var">GRAVITY</span> = <span class="num">980.0</span>
+
+<span class="kw">var</span> <span class="var">health</span>: <span class="cls">int</span>
+<span class="kw">var</span> <span class="var">is_dead</span>: <span class="cls">bool</span> = <span class="kw">false</span>
+
+<span class="kw">signal</span> <span class="var">health_changed</span>(<span class="var">value</span>: <span class="cls">int</span>)
+<span class="kw">signal</span> <span class="var">died</span>
+
+<span class="kw">@onready</span> <span class="kw">var</span> <span class="var">anim</span>: <span class="cls">AnimatedSprite2D</span> = $<span class="var">AnimatedSprite2D</span>
+
+<span class="kw">func</span> <span class="fn">_ready</span>() -> <span class="kw">void</span>:
+    <span class="var">health</span> = <span class="var">max_health</span>
+
+<span class="kw">func</span> <span class="fn">_physics_process</span>(<span class="var">delta</span>: <span class="cls">float</span>) -> <span class="kw">void</span>:
+    <span class="kw">if</span> <span class="var">is_dead</span>: <span class="kw">return</span>
+
+    <span class="cm"># Aplicar gravedad</span>
+    <span class="kw">if</span> <span class="kw">not</span> is_on_floor():
+        <span class="var">velocity</span>.<span class="var">y</span> += <span class="var">GRAVITY</span> * <span class="var">delta</span>
+
+    <span class="cm"># Saltar</span>
+    <span class="kw">if</span> <span class="cls">Input</span>.is_action_just_pressed(<span class="str">"jump"</span>) <span class="kw">and</span> is_on_floor():
+        <span class="var">velocity</span>.<span class="var">y</span> = <span class="var">jump_velocity</span>
+
+    <span class="cm"># Movimiento horizontal</span>
+    <span class="kw">var</span> <span class="var">dir</span> = <span class="cls">Input</span>.get_axis(<span class="str">"move_left"</span>, <span class="str">"move_right"</span>)
+    <span class="var">velocity</span>.<span class="var">x</span> = <span class="var">dir</span> * <span class="var">speed</span>
+
+    <span class="cm"># Voltear sprite</span>
+    <span class="kw">if</span> <span class="var">dir</span> != <span class="num">0</span>:
+        <span class="var">anim</span>.<span class="var">flip_h</span> = <span class="var">dir</span> < <span class="num">0</span>
+
+    move_and_slide()
+    <span class="fn">_update_animation</span>()
+
+<span class="kw">func</span> <span class="fn">_update_animation</span>() -> <span class="kw">void</span>:
+    <span class="kw">if</span> <span class="kw">not</span> is_on_floor():
+        <span class="var">anim</span>.play(<span class="str">"jump"</span> <span class="kw">if</span> <span class="var">velocity</span>.<span class="var">y</span> < <span class="num">0</span> <span class="kw">else</span> <span class="str">"fall"</span>)
+    <span class="kw">elif</span> <span class="kw">abs</span>(<span class="var">velocity</span>.<span class="var">x</span>) > <span class="num">10</span>:
+        <span class="var">anim</span>.play(<span class="str">"run"</span>)
+    <span class="kw">else</span>:
+        <span class="var">anim</span>.play(<span class="str">"idle"</span>)
+
+<span class="kw">func</span> <span class="fn">take_damage</span>(<span class="var">amount</span>: <span class="cls">int</span>) -> <span class="kw">void</span>:
+    <span class="kw">if</span> <span class="var">is_dead</span>: <span class="kw">return</span>
+    <span class="var">health</span> = <span class="kw">max</span>(<span class="num">0</span>, <span class="var">health</span> - <span class="var">amount</span>)
+    health_changed.emit(<span class="var">health</span>)
+    <span class="kw">if</span> <span class="var">health</span> == <span class="num">0</span>: <span class="fn">_die</span>()
+
+<span class="kw">func</span> <span class="fn">_die</span>() -> <span class="kw">void</span>:
+    <span class="var">is_dead</span> = <span class="kw">true</span>
+    <span class="var">anim</span>.play(<span class="str">"die"</span>)
+    died.emit()</code></pre>
+        </div>
+      </div>
+
+      <div id="page-Input & Movimiento" style="display:none">
+        <div class="section-header">
+          <span class="section-number">03</span>
+          <div><div class="section-title">Jugador 2D <span class="dim">// Input Map y Movimiento</span></div></div>
+        </div>
+        <h2>Configurar Input Map</h2>
+        <p>Ve a <strong>Project → Project Settings → Input Map</strong>. Añade acciones y asigna teclas. Esto desacopla la lógica del hardware.</p>
+        <table class="data-table">
+          <thead><tr><th>Acción sugerida</th><th>Tecla default</th><th>Uso</th></tr></thead>
+          <tbody>
+            <tr><td><code>move_left</code></td><td>A / ←</td><td>Movimiento izquierda</td></tr>
+            <tr><td><code>move_right</code></td><td>D / →</td><td>Movimiento derecha</td></tr>
+            <tr><td><code>jump</code></td><td>Space / Z</td><td>Saltar</td></tr>
+            <tr><td><code>dash</code></td><td>Shift / X</td><td>Dash/esquivar</td></tr>
+            <tr><td><code>attack</code></td><td>J / C</td><td>Ataque</td></tr>
+            <tr><td><code>interact</code></td><td>E / Up</td><td>Interactuar</td></tr>
+            <tr><td><code>map</code></td><td>M / Tab</td><td>Abrir mapa</td></tr>
+          </tbody>
+        </table>
+        <div class="code-block">
+          <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">input_movement.gd</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+          <pre><code><span class="cm"># ── Técnicas de input ──</span>
+
+<span class="cm"># get_axis: devuelve -1, 0 o 1 suavizado</span>
+<span class="kw">var</span> <span class="var">dir</span> = <span class="cls">Input</span>.get_axis(<span class="str">"move_left"</span>, <span class="str">"move_right"</span>)
+
+<span class="cm"># is_action_just_pressed: solo el frame en que se pulsa</span>
+<span class="kw">if</span> <span class="cls">Input</span>.is_action_just_pressed(<span class="str">"jump"</span>):
+    <span class="var">velocity</span>.<span class="var">y</span> = <span class="var">jump_velocity</span>
+
+<span class="cm"># is_action_pressed: mientras esté pulsado</span>
+<span class="kw">if</span> <span class="cls">Input</span>.is_action_pressed(<span class="str">"attack"</span>):
+    <span class="fn">fire</span>()
+
+<span class="cm"># ── Dash con cooldown ──</span>
+<span class="kw">var</span> <span class="var">can_dash</span>: <span class="cls">bool</span> = <span class="kw">true</span>
+<span class="kw">var</span> <span class="var">dash_cooldown</span>: <span class="cls">float</span> = <span class="num">0.8</span>
+
+<span class="kw">func</span> <span class="fn">_physics_process</span>(<span class="var">delta</span>: <span class="cls">float</span>) -> <span class="kw">void</span>:
+    <span class="kw">if</span> <span class="cls">Input</span>.is_action_just_pressed(<span class="str">"dash"</span>) <span class="kw">and</span> <span class="var">can_dash</span>:
+        <span class="fn">_do_dash</span>()
+
+<span class="kw">func</span> <span class="fn">_do_dash</span>() -> <span class="kw">void</span>:
+    <span class="var">can_dash</span> = <span class="kw">false</span>
+    <span class="kw">var</span> <span class="var">dir</span> = -<span class="num">1</span> <span class="kw">if</span> <span class="var">anim</span>.<span class="var">flip_h</span> <span class="kw">else</span> <span class="num">1</span>
+    <span class="var">velocity</span>.<span class="var">x</span> = <span class="var">dir</span> * <span class="num">600</span>
+    <span class="cm"># Resetear después del cooldown</span>
+    <span class="kw">await</span> get_tree().create_timer(<span class="var">dash_cooldown</span>).timeout
+    <span class="var">can_dash</span> = <span class="kw">true</span>
+
+<span class="cm"># ── Coyote time y jump buffer (avanzado) ──</span>
+<span class="kw">var</span> <span class="var">coyote_time</span>: <span class="cls">float</span>  = <span class="num">0.12</span>  <span class="cm"># segundos tras caer del borde</span>
+<span class="kw">var</span> <span class="var">jump_buffer</span>: <span class="cls">float</span>  = <span class="num">0.1</span>   <span class="cm"># buffer de salto anticipado</span>
+<span class="kw">var</span> <span class="var">coyote_timer</span>: <span class="cls">float</span> = <span class="num">0.0</span>
+<span class="kw">var</span> <span class="var">buffer_timer</span>: <span class="cls">float</span> = <span class="num">0.0</span>
+
+<span class="kw">func</span> <span class="fn">_handle_jump</span>(<span class="var">delta</span>: <span class="cls">float</span>) -> <span class="kw">void</span>:
+    <span class="kw">if</span> is_on_floor(): <span class="var">coyote_timer</span> = <span class="var">coyote_time</span>
+    <span class="kw">else</span>: <span class="var">coyote_timer</span> -= <span class="var">delta</span>
+
+    <span class="kw">if</span> <span class="cls">Input</span>.is_action_just_pressed(<span class="str">"jump"</span>): <span class="var">buffer_timer</span> = <span class="var">jump_buffer</span>
+    <span class="kw">else</span>: <span class="var">buffer_timer</span> -= <span class="var">delta</span>
+
+    <span class="kw">if</span> <span class="var">buffer_timer</span> > <span class="num">0</span> <span class="kw">and</span> <span class="var">coyote_timer</span> > <span class="num">0</span>:
+        <span class="var">velocity</span>.<span class="var">y</span> = <span class="var">jump_velocity</span>
+        <span class="var">buffer_timer</span> = <span class="num">0</span>
+        <span class="var">coyote_timer</span> = <span class="num">0</span></code></pre>
+        </div>
+        <div class="tip"><strong>🕹️ Game Feel:</strong> Coyote time y jump buffer son las dos mecánicas más importantes para que el salto se sienta bien. ¡Implementarlas siempre!</div>
+      </div>
+
+      <div id="page-Animaciones" style="display:none">
+        <div class="section-header">
+          <span class="section-number">03</span>
+          <div><div class="section-title">Jugador 2D <span class="dim">// AnimatedSprite2D</span></div></div>
+        </div>
+        <div class="code-block">
+          <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">animaciones.gd</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+          <pre><code><span class="cm"># ── AnimatedSprite2D ──</span>
+<span class="cm"># Requiere un SpriteFrames con animaciones definidas en el Editor</span>
+
+<span class="kw">@onready</span> <span class="kw">var</span> <span class="var">anim</span>: <span class="cls">AnimatedSprite2D</span> = $<span class="var">AnimatedSprite2D</span>
+
+<span class="kw">func</span> <span class="fn">_ready</span>() -> <span class="kw">void</span>:
+    <span class="var">anim</span>.animation_finished.connect(_on_animation_finished)
+
+<span class="kw">func</span> <span class="fn">_play_state_animation</span>(<span class="var">state</span>: <span class="cls">String</span>) -> <span class="kw">void</span>:
+    <span class="kw">if</span> <span class="var">anim</span>.<span class="var">animation</span> != <span class="var">state</span>:   <span class="cm"># evitar restart innecesario</span>
+        <span class="var">anim</span>.play(<span class="var">state</span>)
+
+<span class="kw">func</span> <span class="fn">_on_animation_finished</span>() -> <span class="kw">void</span>:
+    <span class="kw">if</span> <span class="var">anim</span>.<span class="var">animation</span> == <span class="str">"attack"</span>:
+        <span class="var">anim</span>.play(<span class="str">"idle"</span>)           <span class="cm"># volver a idle</span>
+
+<span class="cm"># ── AnimationPlayer: para animaciones complejas ──</span>
+<span class="cm"># Permite animar cualquier propiedad del nodo (posición, escala, color, etc.)</span>
+<span class="kw">@onready</span> <span class="kw">var</span> <span class="var">ap</span>: <span class="cls">AnimationPlayer</span> = $<span class="var">AnimationPlayer</span>
+
+<span class="kw">func</span> <span class="fn">hurt_flash</span>() -> <span class="kw">void</span>:
+    <span class="var">ap</span>.play(<span class="str">"hurt_flash"</span>)
+    <span class="kw">await</span> <span class="var">ap</span>.animation_finished
+
+<span class="cm"># ── Tween: para tweens en código ──</span>
+<span class="kw">func</span> <span class="fn">knockback</span>(<span class="var">direction</span>: <span class="cls">Vector2</span>) -> <span class="kw">void</span>:
+    <span class="kw">var</span> <span class="var">tween</span> = create_tween()
+    <span class="var">tween</span>.tween_property(<span class="kw">self</span>, <span class="str">"modulate"</span>, <span class="cls">Color</span>.<span class="var">RED</span>, <span class="num">0.05</span>)
+    <span class="var">tween</span>.tween_property(<span class="kw">self</span>, <span class="str">"modulate"</span>, <span class="cls">Color</span>.<span class="var">WHITE</span>, <span class="num">0.2</span>)</code></pre>
+        </div>
+      </div>
+
+      <div id="page-Cámara 2D" style="display:none">
+        <div class="section-header">
+          <span class="section-number">03</span>
+          <div><div class="section-title">Jugador 2D <span class="dim">// Camera2D</span></div></div>
+        </div>
+        <div class="code-block">
+          <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">camera2d.gd</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+          <pre><code><span class="cm"># ── Cámara básica (hijo del player) ──</span>
+<span class="kw">extends</span> <span class="cls">Camera2D</span>
+
+<span class="kw">@export</span> <span class="kw">var</span> <span class="var">look_ahead</span>: <span class="cls">float</span> = <span class="num">32.0</span>   <span class="cm"># anticipación de movimiento</span>
+
+<span class="kw">func</span> <span class="fn">_ready</span>() -> <span class="kw">void</span>:
+    <span class="cm"># Configuración recomendada para metroidvania</span>
+    position_smoothing_enabled = <span class="kw">true</span>
+    position_smoothing_speed   = <span class="num">5.0</span>
+    drag_horizontal_enabled    = <span class="kw">true</span>
+    drag_horizontal_offset     = <span class="num">0.0</span>
+    <span class="cm"># Límites de cámara (definidos por el tamaño de la sala)</span>
+    limit_left   = <span class="num">0</span>
+    limit_top    = <span class="num">0</span>
+    limit_right  = <span class="num">320</span>   <span class="cm"># ancho sala en px</span>
+    limit_bottom = <span class="num">180</span>
+
+<span class="cm"># ── Sacudida de cámara (screen shake) ──</span>
+<span class="kw">var</span> <span class="var">shake_strength</span>: <span class="cls">float</span> = <span class="num">0.0</span>
+
+<span class="kw">func</span> <span class="fn">shake</span>(<span class="var">strength</span>: <span class="cls">float</span>, <span class="var">duration</span>: <span class="cls">float</span>) -> <span class="kw">void</span>:
+    <span class="var">shake_strength</span> = <span class="var">strength</span>
+    <span class="kw">var</span> <span class="var">t</span> = create_tween()
+    <span class="var">t</span>.tween_property(<span class="kw">self</span>, <span class="str">"shake_strength"</span>, <span class="num">0.0</span>, <span class="var">duration</span>)
+
+<span class="kw">func</span> <span class="fn">_process</span>(<span class="var">_delta</span>: <span class="cls">float</span>) -> <span class="kw">void</span>:
+    <span class="kw">if</span> <span class="var">shake_strength</span> > <span class="num">0</span>:
+        <span class="var">offset</span> = <span class="cls">Vector2</span>(
+            randf_range(-<span class="var">shake_strength</span>, <span class="var">shake_strength</span>),
+            randf_range(-<span class="var">shake_strength</span>, <span class="var">shake_strength</span>)
+        )</code></pre>
+        </div>
+      </div>
+
+      <div class="nav-footer">
+        <button class="nav-btn" onclick="navigate('nodes','Nodos y Escenas','Instancias')">
+          <span class="nav-dir">← Anterior</span>
+          <span>Instancias</span>
+        </button>
+        <button class="nav-btn right" onclick="navigate('metroidvania','Metroidvania','Diseño de Salas')">
+          <span class="nav-dir">Siguiente →</span>
+          <span>Metroidvania</span>
+        </button>
+      </div>
+    </div><!-- /section-player -->
+
+    <!-- ======================================================
+         SECTION: METROIDVANIA
+    ====================================================== -->
+    <div id="section-metroidvania" class="section">
+
+      <div id="page-Diseño de Salas">
+        <div class="section-header">
+          <span class="section-number">04</span>
+          <div><div class="section-title">Metroidvania <span class="dim">// Diseño de Salas</span></div></div>
+        </div>
+        <p>Un metroidvania se compone de <strong>salas interconectadas</strong>. Cada sala es una escena Godot. El <strong>Room Manager</strong> carga y descarga salas al pasar por puertas.</p>
+        <h2>Estructura de archivos sugerida</h2>
+        <div class="code-block">
+          <div class="code-block-header"><span class="lang">FileSystem</span><span class="file-name">res://</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+          <pre><code>res://
+├── scenes/
+│   ├── player/       Player.tscn, Player.gd
+│   ├── enemies/      Bat.tscn, Slime.tscn, Boss1.tscn
+│   ├── rooms/        room_a1.tscn … room_z9.tscn
+│   ├── ui/           HUD.tscn, PauseMenu.tscn, Map.tscn
+│   └── world/        World.tscn  (escena raíz)
+├── assets/
+│   ├── sprites/      player.png, enemies.png, tiles.png
+│   ├── tilemaps/     world_tiles.tres
+│   └── audio/        music/, sfx/
+├── scripts/
+│   ├── autoloads/    GameManager.gd, AudioManager.gd, SaveSystem.gd
+│   └── utils/        RoomTransition.gd, AbilitySystem.gd
+└── shaders/          pixel_perfect.gdshader</code></pre>
+        </div>
+        <h2>RoomManager: carga dinámica de salas</h2>
+        <div class="code-block">
+          <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">RoomManager.gd (Autoload)</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+          <pre><code><span class="kw">extends</span> <span class="cls">Node</span>
+<span class="kw">class_name</span> <span class="cls">RoomManager</span>
+
+<span class="kw">var</span> <span class="var">current_room</span>: <span class="cls">Node</span> = <span class="kw">null</span>
+<span class="kw">var</span> <span class="var">player</span>: <span class="cls">Player</span>
+
+<span class="kw">signal</span> <span class="var">room_loaded</span>(<span class="var">room</span>: <span class="cls">Node</span>)
+
+<span class="kw">func</span> <span class="fn">load_room</span>(<span class="var">path</span>: <span class="cls">String</span>, <span class="var">spawn_point</span>: <span class="cls">String</span> = <span class="str">"default"</span>) -> <span class="kw">void</span>:
+    <span class="cm"># 1. Fade out</span>
+    <span class="kw">await</span> <span class="cls">Transition</span>.fade_out()
+
+    <span class="cm"># 2. Descargar sala actual</span>
+    <span class="kw">if</span> <span class="var">current_room</span>:
+        <span class="var">current_room</span>.queue_free()
+        <span class="kw">await</span> get_tree().process_frame
+
+    <span class="cm"># 3. Cargar y añadir nueva sala</span>
+    <span class="kw">var</span> <span class="var">scene</span> = load(<span class="var">path</span>)
+    <span class="var">current_room</span> = <span class="var">scene</span>.instantiate()
+    get_tree().<span class="var">current_scene</span>.add_child(<span class="var">current_room</span>)
+
+    <span class="cm"># 4. Mover jugador al spawn point</span>
+    <span class="kw">var</span> <span class="var">sp</span> = <span class="var">current_room</span>.get_node_or_null(<span class="str">"SpawnPoints/"</span> + <span class="var">spawn_point</span>)
+    <span class="kw">if</span> <span class="var">sp</span> <span class="kw">and</span> <span class="var">player</span>:
+        <span class="var">player</span>.<span class="var">global_position</span> = <span class="var">sp</span>.<span class="var">global_position</span>
+
+    <span class="cm"># 5. Fade in</span>
+    room_loaded.emit(<span class="var">current_room</span>)
+    <span class="kw">await</span> <span class="cls">Transition</span>.fade_in()</code></pre>
+        </div>
+      </div>
+
+      <div id="page-TileMap 2D" style="display:none">
+        <div class="section-header">
+          <span class="section-number">04</span>
+          <div><div class="section-title">Metroidvania <span class="dim">// TileMapLayer</span></div></div>
+        </div>
+        <p>En Godot 4.3+, el sistema TileMap usa <strong>TileMapLayer</strong>. Cada capa (fondo, colisiones, decoración) es un nodo independiente.</p>
+        <div class="code-block">
+          <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">tilemap.gd</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+          <pre><code><span class="kw">extends</span> <span class="cls">TileMapLayer</span>
+
+<span class="cm"># ── Obtener tile en posición world ──</span>
+<span class="kw">func</span> <span class="fn">get_tile_at_world</span>(<span class="var">world_pos</span>: <span class="cls">Vector2</span>) -> <span class="cls">Vector2i</span>:
+    <span class="kw">return</span> local_to_map(to_local(<span class="var">world_pos</span>))
+
+<span class="cm"># ── Colocar tile ──</span>
+<span class="kw">func</span> <span class="fn">place_tile</span>(<span class="var">cell</span>: <span class="cls">Vector2i</span>, <span class="var">source_id</span>: <span class="cls">int</span>, <span class="var">atlas_coords</span>: <span class="cls">Vector2i</span>) -> <span class="kw">void</span>:
+    set_cell(<span class="var">cell</span>, <span class="var">source_id</span>, <span class="var">atlas_coords</span>)
+
+<span class="cm"># ── Borrar tile ──</span>
+<span class="kw">func</span> <span class="fn">remove_tile</span>(<span class="var">cell</span>: <span class="cls">Vector2i</span>) -> <span class="kw">void</span>:
+    erase_cell(<span class="var">cell</span>)
+
+<span class="cm"># ── Tiles con custom data (metadata por tile) ──</span>
+<span class="cm"># En TileSet editor: añadir custom data layer "damage" : int</span>
+<span class="kw">func</span> <span class="fn">get_tile_damage</span>(<span class="var">cell</span>: <span class="cls">Vector2i</span>) -> <span class="cls">int</span>:
+    <span class="kw">var</span> <span class="var">data</span> = get_cell_tile_data(<span class="var">cell</span>)
+    <span class="kw">if</span> <span class="var">data</span>: <span class="kw">return</span> <span class="var">data</span>.get_custom_data(<span class="str">"damage"</span>)
+    <span class="kw">return</span> <span class="num">0</span></code></pre>
+        </div>
+        <div class="tip"><strong>🧩 Workflow Tileset Pixel Art:</strong><br>
+        1. Importa PNG con filtro <code class="inline">Nearest</code> y <code class="inline">Repeat: Disabled</code>.<br>
+        2. TileSet → New TileSetAtlasSource → asigna la textura.<br>
+        3. Activa <code class="inline">Autotile</code> o pinta celdas manualmente.<br>
+        4. En Terrain Sets define terrenos para auto-tiling.
+        </div>
+      </div>
+
+      <div id="page-Sistema de Habilidades" style="display:none">
+        <div class="section-header">
+          <span class="section-number">04</span>
+          <div><div class="section-title">Metroidvania <span class="dim">// Sistema de Habilidades</span></div></div>
+        </div>
+        <div class="code-block">
+          <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">AbilitySystem.gd (Autoload)</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+          <pre><code><span class="kw">extends</span> <span class="cls">Node</span>
+
+<span class="cm"># Diccionario central de habilidades desbloqueadas</span>
+<span class="kw">var</span> <span class="var">abilities</span>: <span class="cls">Dictionary</span> = {
+    <span class="str">"double_jump"</span>: <span class="kw">false</span>,
+    <span class="str">"dash"</span>:        <span class="kw">false</span>,
+    <span class="str">"wall_slide"</span>:  <span class="kw">false</span>,
+    <span class="str">"wall_jump"</span>:   <span class="kw">false</span>,
+    <span class="str">"grapple"</span>:     <span class="kw">false</span>,
+    <span class="str">"bomb"</span>:        <span class="kw">false</span>,
+    <span class="str">"swim"</span>:        <span class="kw">false</span>,
+}
+
+<span class="kw">signal</span> <span class="var">ability_unlocked</span>(<span class="var">name</span>: <span class="cls">String</span>)
+
+<span class="kw">func</span> <span class="fn">unlock</span>(<span class="var">ability</span>: <span class="cls">String</span>) -> <span class="kw">void</span>:
+    <span class="kw">if</span> <span class="var">abilities</span>.has(<span class="var">ability</span>) <span class="kw">and</span> <span class="kw">not</span> <span class="var">abilities</span>[<span class="var">ability</span>]:
+        <span class="var">abilities</span>[<span class="var">ability</span>] = <span class="kw">true</span>
+        ability_unlocked.emit(<span class="var">ability</span>)
+        print(<span class="str">"✨ Habilidad desbloqueada: "</span>, <span class="var">ability</span>)
+
+<span class="kw">func</span> <span class="fn">has</span>(<span class="var">ability</span>: <span class="cls">String</span>) -> <span class="cls">bool</span>:
+    <span class="kw">return</span> <span class="var">abilities</span>.get(<span class="var">ability</span>, <span class="kw">false</span>)
+
+<span class="cm"># ── En Player.gd, usar en _physics_process ──</span>
+<span class="cm"># if AbilitySystem.has("double_jump") and air_jumps > 0:</span>
+<span class="cm">#     _do_jump(); air_jumps -= 1</span>
+
+<span class="cm"># ── Puerta que se abre con habilidad ──</span>
+<span class="kw">func</span> <span class="fn">check_door</span>(<span class="var">required</span>: <span class="cls">String</span>) -> <span class="cls">bool</span>:
+    <span class="kw">return</span> <span class="cls">AbilitySystem</span>.has(<span class="var">required</span>)</code></pre>
+        </div>
+      </div>
+
+      <div id="page-Enemigos & IA" style="display:none">
+        <div class="section-header">
+          <span class="section-number">04</span>
+          <div><div class="section-title">Metroidvania <span class="dim">// Enemigos e IA básica</span></div></div>
+        </div>
+        <div class="code-block">
+          <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">enemy_base.gd</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+          <pre><code><span class="kw">extends</span> <span class="cls">CharacterBody2D</span>
+<span class="kw">class_name</span> <span class="cls">EnemyBase</span>
+
+<span class="kw">enum</span> <span class="cls">State</span> { IDLE, PATROL, CHASE, ATTACK, HURT, DEAD }
+
+<span class="kw">@export</span> <span class="kw">var</span> <span class="var">max_health</span>: <span class="cls">int</span>    = <span class="num">30</span>
+<span class="kw">@export</span> <span class="kw">var</span> <span class="var">move_speed</span>: <span class="cls">float</span>  = <span class="num">60.0</span>
+<span class="kw">@export</span> <span class="kw">var</span> <span class="var">detect_range</span>: <span class="cls">float</span> = <span class="num">150.0</span>
+<span class="kw">@export</span> <span class="kw">var</span> <span class="var">attack_range</span>: <span class="cls">float</span> = <span class="num">20.0</span>
+<span class="kw">@export</span> <span class="kw">var</span> <span class="var">damage</span>: <span class="cls">int</span>         = <span class="num">10</span>
+
+<span class="kw">var</span> <span class="var">state</span>: <span class="cls">State</span> = <span class="cls">State</span>.<span class="var">PATROL</span>
+<span class="kw">var</span> <span class="var">health</span>: <span class="cls">int</span>
+<span class="kw">var</span> <span class="var">player</span>: <span class="cls">Player</span>
+
+<span class="kw">const</span> <span class="var">GRAVITY</span> = <span class="num">980.0</span>
+
+<span class="kw">func</span> <span class="fn">_ready</span>() -> <span class="kw">void</span>:
+    <span class="var">health</span> = <span class="var">max_health</span>
+    add_to_group(<span class="str">"enemies"</span>)
+    <span class="var">player</span> = get_tree().get_first_node_in_group(<span class="str">"player"</span>)
+
+<span class="kw">func</span> <span class="fn">_physics_process</span>(<span class="var">delta</span>: <span class="cls">float</span>) -> <span class="kw">void</span>:
+    <span class="kw">if</span> <span class="kw">not</span> is_on_floor():
+        <span class="var">velocity</span>.<span class="var">y</span> += <span class="var">GRAVITY</span> * <span class="var">delta</span>
+
+    <span class="kw">match</span> <span class="var">state</span>:
+        <span class="cls">State</span>.<span class="var">PATROL</span>: <span class="fn">_patrol</span>(<span class="var">delta</span>)
+        <span class="cls">State</span>.<span class="var">CHASE</span>:  <span class="fn">_chase</span>(<span class="var">delta</span>)
+        <span class="cls">State</span>.<span class="var">ATTACK</span>: <span class="fn">_attack</span>()
+        _: <span class="kw">pass</span>
+
+    move_and_slide()
+    <span class="fn">_update_state</span>()
+
+<span class="kw">func</span> <span class="fn">_update_state</span>() -> <span class="kw">void</span>:
+    <span class="kw">if</span> <span class="kw">not</span> <span class="var">player</span> <span class="kw">or</span> <span class="var">state</span> == <span class="cls">State</span>.<span class="var">DEAD</span>: <span class="kw">return</span>
+    <span class="kw">var</span> <span class="var">dist</span> = <span class="var">global_position</span>.distance_to(<span class="var">player</span>.<span class="var">global_position</span>)
+    <span class="kw">if</span>   <span class="var">dist</span> <= <span class="var">attack_range</span>: <span class="var">state</span> = <span class="cls">State</span>.<span class="var">ATTACK</span>
+    <span class="kw">elif</span> <span class="var">dist</span> <= <span class="var">detect_range</span>: <span class="var">state</span> = <span class="cls">State</span>.<span class="var">CHASE</span>
+    <span class="kw">else</span>:                       <span class="var">state</span> = <span class="cls">State</span>.<span class="var">PATROL</span>
+
+<span class="kw">func</span> <span class="fn">take_damage</span>(<span class="var">amount</span>: <span class="cls">int</span>) -> <span class="kw">void</span>:
+    <span class="var">health</span> -= <span class="var">amount</span>
+    <span class="kw">if</span> <span class="var">health</span> <= <span class="num">0</span>: <span class="fn">_die</span>()
+
+<span class="kw">func</span> <span class="fn">_patrol</span>(<span class="var">_d</span>: <span class="cls">float</span>) -> <span class="kw">void</span>: <span class="kw">pass</span>  <span class="cm"># implementar en subclase</span>
+<span class="kw">func</span> <span class="fn">_chase</span>(<span class="var">_d</span>: <span class="cls">float</span>) -> <span class="kw">void</span>:
+    <span class="kw">var</span> <span class="var">dir</span> = sign(<span class="var">player</span>.<span class="var">global_position</span>.<span class="var">x</span> - <span class="var">global_position</span>.<span class="var">x</span>)
+    <span class="var">velocity</span>.<span class="var">x</span> = <span class="var">dir</span> * <span class="var">move_speed</span>
+<span class="kw">func</span> <span class="fn">_attack</span>() -> <span class="kw">void</span>: <span class="kw">pass</span>
+<span class="kw">func</span> <span class="fn">_die</span>() -> <span class="kw">void</span>:
+    <span class="var">state</span> = <span class="cls">State</span>.<span class="var">DEAD</span>
+    queue_free()</code></pre>
+        </div>
+      </div>
+
+      <div id="page-Transiciones" style="display:none">
+        <div class="section-header">
+          <span class="section-number">04</span>
+          <div><div class="section-title">Metroidvania <span class="dim">// Transiciones de sala</span></div></div>
+        </div>
+        <div class="code-block">
+          <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">DoorTrigger.gd</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+          <pre><code><span class="kw">extends</span> <span class="cls">Area2D</span>
+
+<span class="kw">@export</span> <span class="kw">var</span> <span class="var">target_room</span>: <span class="cls">String</span>     = <span class="str">"res://rooms/room_b1.tscn"</span>
+<span class="kw">@export</span> <span class="kw">var</span> <span class="var">target_spawn</span>: <span class="cls">String</span>    = <span class="str">"left_entry"</span>
+<span class="kw">@export</span> <span class="kw">var</span> <span class="var">required_ability</span>: <span class="cls">String</span> = <span class="str">""</span>   <span class="cm"># "" = siempre abierta</span>
+
+<span class="kw">func</span> <span class="fn">_ready</span>() -> <span class="kw">void</span>:
+    body_entered.connect(_on_body_entered)
+
+<span class="kw">func</span> <span class="fn">_on_body_entered</span>(<span class="var">body</span>: <span class="cls">Node2D</span>) -> <span class="kw">void</span>:
+    <span class="kw">if</span> <span class="kw">not</span> <span class="var">body</span>.is_in_group(<span class="str">"player"</span>): <span class="kw">return</span>
+    <span class="kw">if</span> <span class="var">required_ability</span> != <span class="str">""</span> <span class="kw">and</span> <span class="kw">not</span> <span class="cls">AbilitySystem</span>.has(<span class="var">required_ability</span>):
+        <span class="cm"># Puerta bloqueada — mostrar feedback visual</span>
+        <span class="kw">return</span>
+    <span class="cls">RoomManager</span>.load_room(<span class="var">target_room</span>, <span class="var">target_spawn</span>)</code></pre>
+        </div>
+      </div>
+
+      <div class="nav-footer">
+        <button class="nav-btn" onclick="navigate('player','Jugador 2D','Cámara 2D')">
+          <span class="nav-dir">← Anterior</span>
+          <span>Cámara 2D</span>
+        </button>
+        <button class="nav-btn right" onclick="navigate('pixelart','Pixel Art','Config Proyecto')">
+          <span class="nav-dir">Siguiente →</span>
+          <span>Pixel Art</span>
+        </button>
+      </div>
+    </div><!-- /section-metroidvania -->
+
+    <!-- ======================================================
+         SECTION: PIXEL ART
+    ====================================================== -->
+    <div id="section-pixelart" class="section">
+
+      <div id="page-Config Proyecto">
+        <div class="section-header">
+          <span class="section-number">05</span>
+          <div><div class="section-title">Pixel Art <span class="dim">// Configuración</span></div></div>
+        </div>
+        <h2>Project Settings para Pixel Art perfecto</h2>
+        <table class="data-table">
+          <thead><tr><th>Ajuste</th><th>Ruta</th><th>Valor</th></tr></thead>
+          <tbody>
+            <tr><td>Filtro de textura</td><td>Rendering › Textures › Canvas Textures</td><td><code>Nearest</code></td></tr>
+            <tr><td>Tamaño viewport</td><td>Display › Window › Size</td><td><code>320 × 180</code> (o 426×240)</td></tr>
+            <tr><td>Stretch Mode</td><td>Display › Window › Stretch</td><td><code>canvas_items</code></td></tr>
+            <tr><td>Stretch Aspect</td><td>Display › Window › Stretch</td><td><code>keep</code></td></tr>
+            <tr><td>Snap 2D Transforms</td><td>Rendering › 2D</td><td><code>Enabled</code></td></tr>
+            <tr><td>Snap 2D Vertices</td><td>Rendering › 2D</td><td><code>Enabled</code></td></tr>
+          </tbody>
+        </table>
+        <div class="warning"><strong>⚠️</strong> <code class="inline">Snap 2D Transforms to Pixel</code> es crucial para evitar el "pixel shimmer" cuando la cámara se mueve.</div>
+        <h2>Importar sprites correctamente</h2>
+        <p>Selecciona el PNG en el FileSystem → Import tab:</p>
+        <div class="code-block">
+          <div class="code-block-header"><span class="lang">Import settings</span><span class="file-name">player.png → Reimport</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+          <pre><code>Compress > Mode          = Lossless
+Filter                   = Nearest
+Mipmap > Generate        = OFF
+Repeat                   = Disabled
+HDR Compression          = Disabled</code></pre>
+        </div>
+      </div>
+
+      <div id="page-AnimatedSprite2D" style="display:none">
+        <div class="section-header">
+          <span class="section-number">05</span>
+          <div><div class="section-title">Pixel Art <span class="dim">// Sprites y animaciones</span></div></div>
+        </div>
+        <div class="code-block">
+          <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">sprite_setup.gd</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+          <pre><code><span class="cm"># ── SpriteFrames: crear en código o desde el Editor ──</span>
+<span class="cm"># En el Editor:</span>
+<span class="cm"># 1. Selecciona AnimatedSprite2D</span>
+<span class="cm"># 2. Inspector → Sprite Frames → New SpriteFrames</span>
+<span class="cm"># 3. Doble click → SpriteFrames Editor</span>
+<span class="cm"># 4. Añade animaciones: idle, run, jump, fall, attack, hurt, die</span>
+<span class="cm"># 5. Arrastra el spritesheet → "Add frames from sprite sheet"</span>
+<span class="cm"># 6. Selecciona filas/columnas y frames</span>
+
+<span class="cm"># ── Velocidades recomendadas (FPS) ──</span>
+<span class="cm"># idle:   8 fps   (suave, menor CPU)</span>
+<span class="cm"># run:   12 fps</span>
+<span class="cm"># jump:   8 fps</span>
+<span class="cm"># attack: 15 fps  (snappy)</span>
+<span class="cm"># die:    10 fps</span>
+
+<span class="cm"># ── Escalar sin blur en el Inspector ──</span>
+<span class="kw">@onready</span> <span class="kw">var</span> <span class="var">sprite</span>: <span class="cls">AnimatedSprite2D</span> = $<span class="var">AnimatedSprite2D</span>
+
+<span class="kw">func</span> <span class="fn">_ready</span>() -> <span class="kw">void</span>:
+    <span class="var">sprite</span>.<span class="var">texture_filter</span> = <span class="cls">CanvasItem</span>.<span class="var">TEXTURE_FILTER_NEAREST</span>
+    <span class="var">sprite</span>.<span class="var">scale</span> = <span class="cls">Vector2</span>(<span class="num">1</span>, <span class="num">1</span>)   <span class="cm"># nunca escalar a decimal</span></code></pre>
+        </div>
+      </div>
+
+      <div id="page-Luces 2D" style="display:none">
+        <div class="section-header">
+          <span class="section-number">05</span>
+          <div><div class="section-title">Pixel Art <span class="dim">// Iluminación 2D</span></div></div>
+        </div>
+        <p>Godot 4 tiene un sistema de luces 2D muy completo que funciona perfecto con pixel art.</p>
+        <div class="node-tree">
+          <div class="node-row"><span class="nname">🌍 World</span><span class="ntype">Node2D</span></div>
+          <div class="node-row"><span class="indent">├─</span><span class="nicon">🌑</span><span class="nname">CanvasModulate</span><span class="ntype">CanvasModulate</span></div>
+          <div class="node-row"><span class="indent">│  </span><span class="nname" style="color:var(--txt-muted);font-size:.75rem;">  Color: #1a1a2e (oscuridad ambiental)</span></div>
+          <div class="node-row"><span class="indent">├─</span><span class="nicon">💡</span><span class="nname">TorchLight</span><span class="ntype">PointLight2D</span></div>
+          <div class="node-row"><span class="indent">│  └─</span><span class="nicon">🔵</span><span class="nname">OccluderPoly</span><span class="ntype">LightOccluder2D</span></div>
+          <div class="node-row"><span class="indent">└─</span><span class="nicon">🌟</span><span class="nname">PlayerLight</span><span class="ntype">PointLight2D</span></div>
+        </div>
+        <div class="code-block">
+          <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">lighting_2d.gd</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+          <pre><code><span class="cm"># ── Luz parpadeante (antorcha pixel art) ──</span>
+<span class="kw">extends</span> <span class="cls">PointLight2D</span>
+
+<span class="kw">@export</span> <span class="kw">var</span> <span class="var">flicker_speed</span>: <span class="cls">float</span>  = <span class="num">8.0</span>
+<span class="kw">@export</span> <span class="kw">var</span> <span class="var">flicker_amount</span>: <span class="cls">float</span> = <span class="num">0.15</span>
+<span class="kw">@export</span> <span class="kw">var</span> <span class="var">base_energy</span>: <span class="cls">float</span>    = <span class="num">1.0</span>
+
+<span class="kw">func</span> <span class="fn">_process</span>(<span class="var">delta</span>: <span class="cls">float</span>) -> <span class="kw">void</span>:
+    <span class="kw">var</span> <span class="var">noise</span> = <span class="cls">sin</span>(Time.get_ticks_msec() * <span class="num">0.001</span> * <span class="var">flicker_speed</span>)
+    <span class="var">energy</span> = <span class="var">base_energy</span> + <span class="var">noise</span> * <span class="var">flicker_amount</span>
+    <span class="cm"># Añadir ruido extra para naturalidad</span>
+    <span class="var">energy</span> += randf_range(-<span class="num">0.02</span>, <span class="num">0.02</span>)</code></pre>
+        </div>
+        <div class="info"><strong>ℹ️</strong> Para atmosfera de mazmorras: usa <code class="inline">CanvasModulate</code> con color muy oscuro (<code class="inline">#0d0d1a</code>) y añade <code class="inline">PointLight2D</code> alrededor del jugador con un sprite de gradiente circular.</div>
+      </div>
+
+      <div id="page-Shaders Pixel" style="display:none">
+        <div class="section-header">
+          <span class="section-number">05</span>
+          <div><div class="section-title">Pixel Art <span class="dim">// Shaders básicos</span></div></div>
+        </div>
+        <div class="code-block">
+          <div class="code-block-header"><span class="lang">GLSL / GDShader</span><span class="file-name">outline.gdshader (contorno sprite)</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+          <pre><code>shader_type canvas_item;
+
+uniform vec4 outline_color: source_color = vec4(1.0, 1.0, 1.0, 1.0);
+uniform float outline_width: hint_range(0.0, 5.0, 1.0) = 1.0;
+
+void fragment() {
+    vec4 col = texture(TEXTURE, UV);
+    float alpha = col.a;
+
+    // Samplear píxeles adyacentes
+    float ox = outline_width * TEXTURE_PIXEL_SIZE.x;
+    float oy = outline_width * TEXTURE_PIXEL_SIZE.y;
+    float a = texture(TEXTURE, UV + vec2( ox,  0)).a
+            + texture(TEXTURE, UV + vec2(-ox,  0)).a
+            + texture(TEXTURE, UV + vec2( 0,  oy)).a
+            + texture(TEXTURE, UV + vec2( 0, -oy)).a;
+
+    // Si el pixel es transparente pero tiene vecino opaco = contorno
+    if (alpha < 0.5 && a > 0.0) {
+        COLOR = outline_color;
+    } else {
+        COLOR = col;
+    }
+}</code></pre>
+        </div>
+        <div class="code-block">
+          <div class="code-block-header"><span class="lang">GLSL / GDShader</span><span class="file-name">hit_flash.gdshader (flash blanco al recibir daño)</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+          <pre><code>shader_type canvas_item;
+
+uniform float flash_amount: hint_range(0.0, 1.0) = 0.0;
+
+void fragment() {
+    vec4 col = texture(TEXTURE, UV);
+    // Mezcla hacia blanco según flash_amount
+    col.rgb = mix(col.rgb, vec3(1.0), flash_amount * col.a);
+    COLOR = col;
+}</code></pre>
+        </div>
+        <div class="code-block">
+          <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">activar flash desde código</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+          <pre><code><span class="kw">func</span> <span class="fn">hit_flash</span>() -> <span class="kw">void</span>:
+    <span class="kw">var</span> <span class="var">mat</span> = <span class="var">sprite</span>.<span class="var">material</span> <span class="kw">as</span> <span class="cls">ShaderMaterial</span>
+    <span class="kw">var</span> <span class="var">t</span> = create_tween()
+    <span class="var">t</span>.tween_method(<span class="kw">func</span>(<span class="var">v</span>): <span class="var">mat</span>.set_shader_parameter(<span class="str">"flash_amount"</span>, <span class="var">v</span>),
+        <span class="num">1.0</span>, <span class="num">0.0</span>, <span class="num">0.25</span>)</code></pre>
+        </div>
+      </div>
+
+      <div class="nav-footer">
+        <button class="nav-btn" onclick="navigate('metroidvania','Metroidvania','Transiciones')">
+          <span class="nav-dir">← Anterior</span>
+          <span>Transiciones</span>
+        </button>
+        <button class="nav-btn right" onclick="navigate('sistemas','Sistemas','Save/Load')">
+          <span class="nav-dir">Siguiente →</span>
+          <span>Sistemas</span>
+        </button>
+      </div>
+    </div><!-- /section-pixelart -->
+
+    <!-- ======================================================
+         SECTION: SISTEMAS
+    ====================================================== -->
+    <div id="section-sistemas" class="section">
+
+      <div id="page-Save/Load">
+        <div class="section-header">
+          <span class="section-number">06</span>
+          <div><div class="section-title">Sistemas <span class="dim">// Save / Load</span></div></div>
+        </div>
+        <div class="code-block">
+          <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">SaveSystem.gd (Autoload)</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+          <pre><code><span class="kw">extends</span> <span class="cls">Node</span>
+
+<span class="kw">const</span> <span class="var">SAVE_PATH</span> = <span class="str">"user://savegame.json"</span>
+
+<span class="kw">func</span> <span class="fn">save</span>() -> <span class="kw">void</span>:
+    <span class="kw">var</span> <span class="var">data</span> = {
+        <span class="str">"player_pos"</span>:  [<span class="var">player</span>.<span class="var">global_position</span>.<span class="var">x</span>, <span class="var">player</span>.<span class="var">global_position</span>.<span class="var">y</span>],
+        <span class="str">"health"</span>:      <span class="var">player</span>.<span class="var">health</span>,
+        <span class="str">"abilities"</span>:   <span class="cls">AbilitySystem</span>.<span class="var">abilities</span>,
+        <span class="str">"current_room"</span>:<span class="cls">RoomManager</span>.<span class="var">current_room_path</span>,
+        <span class="str">"timestamp"</span>:   <span class="cls">Time</span>.get_datetime_string_from_system()
+    }
+    <span class="kw">var</span> <span class="var">file</span> = <span class="cls">FileAccess</span>.open(<span class="var">SAVE_PATH</span>, <span class="cls">FileAccess</span>.<span class="var">WRITE</span>)
+    <span class="var">file</span>.store_string(<span class="cls">JSON</span>.stringify(<span class="var">data</span>, <span class="str">"\t"</span>))
+    <span class="var">file</span>.close()
+    print(<span class="str">"💾 Partida guardada"</span>)
+
+<span class="kw">func</span> <span class="fn">load_game</span>() -> <span class="cls">bool</span>:
+    <span class="kw">if</span> <span class="kw">not</span> <span class="cls">FileAccess</span>.file_exists(<span class="var">SAVE_PATH</span>): <span class="kw">return</span> <span class="kw">false</span>
+    <span class="kw">var</span> <span class="var">file</span>  = <span class="cls">FileAccess</span>.open(<span class="var">SAVE_PATH</span>, <span class="cls">FileAccess</span>.<span class="var">READ</span>)
+    <span class="kw">var</span> <span class="var">text</span>  = <span class="var">file</span>.get_as_text()
+    <span class="var">file</span>.close()
+    <span class="kw">var</span> <span class="var">data</span> = <span class="cls">JSON</span>.parse_string(<span class="var">text</span>)
+    <span class="kw">if</span> <span class="kw">not</span> <span class="var">data</span>: <span class="kw">return</span> <span class="kw">false</span>
+
+    <span class="cm"># Restaurar estado</span>
+    <span class="kw">var</span> <span class="var">p</span> = <span class="var">data</span>[<span class="str">"player_pos"</span>]
+    <span class="var">player</span>.<span class="var">global_position</span> = <span class="cls">Vector2</span>(<span class="var">p</span>[<span class="num">0</span>], <span class="var">p</span>[<span class="num">1</span>])
+    <span class="var">player</span>.<span class="var">health</span>          = <span class="var">data</span>[<span class="str">"health"</span>]
+    <span class="cls">AbilitySystem</span>.<span class="var">abilities</span> = <span class="var">data</span>[<span class="str">"abilities"</span>]
+    <span class="kw">return</span> <span class="kw">true</span>
+
+<span class="cm"># user:// en Godot = C:\Users\TU\AppData\Roaming\Godot\app_userdata\...</span></code></pre>
+        </div>
+      </div>
+
+      <div id="page-HUD & UI" style="display:none">
+        <div class="section-header">
+          <span class="section-number">06</span>
+          <div><div class="section-title">Sistemas <span class="dim">// HUD en pixel art</span></div></div>
+        </div>
+        <div class="code-block">
+          <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">HUD.gd</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+          <pre><code><span class="kw">extends</span> <span class="cls">CanvasLayer</span>
+
+<span class="kw">@onready</span> <span class="kw">var</span> <span class="var">health_bar</span>: <span class="cls">TextureProgressBar</span> = $<span class="var">HealthBar</span>
+<span class="kw">@onready</span> <span class="kw">var</span> <span class="var">ability_icons</span>: <span class="cls">HBoxContainer</span>   = $<span class="var">Abilities</span>
+
+<span class="kw">func</span> <span class="fn">_ready</span>() -> <span class="kw">void</span>:
+    <span class="cm"># Conectar al jugador via señal</span>
+    <span class="kw">var</span> <span class="var">player</span> = get_tree().get_first_node_in_group(<span class="str">"player"</span>)
+    <span class="var">player</span>.health_changed.connect(on_health_changed)
+    <span class="cls">AbilitySystem</span>.ability_unlocked.connect(on_ability_unlocked)
+
+<span class="kw">func</span> <span class="fn">on_health_changed</span>(<span class="var">value</span>: <span class="cls">int</span>) -> <span class="kw">void</span>:
+    <span class="cm"># Tween suave en la barra</span>
+    <span class="kw">var</span> <span class="var">t</span> = create_tween()
+    <span class="var">t</span>.tween_property(<span class="var">health_bar</span>, <span class="str">"value"</span>, <span class="var">value</span>, <span class="num">0.3</span>).set_ease(<span class="cls">Tween</span>.<span class="var">EASE_OUT</span>)
+
+<span class="kw">func</span> <span class="fn">on_ability_unlocked</span>(<span class="var">name</span>: <span class="cls">String</span>) -> <span class="kw">void</span>:
+    <span class="cm"># Mostrar icono de habilidad con animación</span>
+    <span class="kw">var</span> <span class="var">icon</span> = preload(<span class="str">"res://ui/ability_icon.tscn"</span>).instantiate()
+    <span class="var">icon</span>.<span class="fn">setup</span>(<span class="var">name</span>)
+    <span class="var">ability_icons</span>.add_child(<span class="var">icon</span>)
+
+<span class="cm"># ── Usar una fuente bitmap para pixel art ──</span>
+<span class="cm"># Importa un .ttf de pixel art (ej: Press Start 2P, Kenney Pixel)</span>
+<span class="cm"># Configura en: Theme → Default Font → Anti-aliasing = NONE</span></code></pre>
+        </div>
+      </div>
+
+      <div id="page-Audio" style="display:none">
+        <div class="section-header">
+          <span class="section-number">06</span>
+          <div><div class="section-title">Sistemas <span class="dim">// Audio Manager</span></div></div>
+        </div>
+        <div class="code-block">
+          <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">AudioManager.gd (Autoload)</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+          <pre><code><span class="kw">extends</span> <span class="cls">Node</span>
+
+<span class="kw">@onready</span> <span class="kw">var</span> <span class="var">music_player</span>: <span class="cls">AudioStreamPlayer</span> = $<span class="var">MusicPlayer</span>
+<span class="kw">var</span> <span class="var">sfx_pool</span>: <span class="cls">Array</span>[<span class="cls">AudioStreamPlayer</span>] = []
+
+<span class="kw">func</span> <span class="fn">play_music</span>(<span class="var">stream</span>: <span class="cls">AudioStream</span>, <span class="var">fade</span>: <span class="cls">float</span> = <span class="num">1.0</span>) -> <span class="kw">void</span>:
+    <span class="kw">if</span> <span class="var">music_player</span>.<span class="var">playing</span>:
+        <span class="kw">var</span> <span class="var">t</span> = create_tween()
+        <span class="var">t</span>.tween_property(<span class="var">music_player</span>, <span class="str">"volume_db"</span>, -<span class="num">40</span>, <span class="var">fade</span>)
+        <span class="kw">await</span> <span class="var">t</span>.finished
+    <span class="var">music_player</span>.<span class="var">stream</span> = <span class="var">stream</span>
+    <span class="var">music_player</span>.<span class="var">volume_db</span> = -<span class="num">40</span>
+    <span class="var">music_player</span>.play()
+    <span class="kw">var</span> <span class="var">t2</span> = create_tween()
+    <span class="var">t2</span>.tween_property(<span class="var">music_player</span>, <span class="str">"volume_db"</span>, <span class="num">0</span>, <span class="var">fade</span>)
+
+<span class="kw">func</span> <span class="fn">play_sfx</span>(<span class="var">stream</span>: <span class="cls">AudioStream</span>, <span class="var">pitch</span>: <span class="cls">float</span> = <span class="num">1.0</span>) -> <span class="kw">void</span>:
+    <span class="kw">var</span> <span class="var">p</span> = <span class="cls">AudioStreamPlayer</span>.new()
+    add_child(<span class="var">p</span>)
+    <span class="var">p</span>.<span class="var">stream</span> = <span class="var">stream</span>
+    <span class="var">p</span>.<span class="var">pitch_scale</span> = <span class="var">pitch</span> + randf_range(-<span class="num">0.05</span>, <span class="num">0.05</span>)  <span class="cm"># variación leve</span>
+    <span class="var">p</span>.<span class="var">bus</span> = <span class="str">"SFX"</span>
+    <span class="var">p</span>.play()
+    <span class="var">p</span>.finished.connect(<span class="var">p</span>.queue_free)</code></pre>
+        </div>
+      </div>
+
+      <div id="page-Autoloads" style="display:none">
+        <div class="section-header">
+          <span class="section-number">06</span>
+          <div><div class="section-title">Sistemas <span class="dim">// Autoloads (Singletons)</span></div></div>
+        </div>
+        <p>Los <strong>Autoloads</strong> en Godot son singletons globales, accesibles desde cualquier script. Perfectos para managers.</p>
+        <div class="code-block">
+          <div class="code-block-header"><span class="lang">Configuración</span><span class="file-name">Project → Project Settings → Autoload</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+          <pre><code><span class="cm"># Añadir estos Autoloads (Project Settings → Autoload):</span>
+GameManager     →  res://scripts/autoloads/GameManager.gd
+RoomManager     →  res://scripts/autoloads/RoomManager.gd
+AbilitySystem   →  res://scripts/autoloads/AbilitySystem.gd
+SaveSystem      →  res://scripts/autoloads/SaveSystem.gd
+AudioManager    →  res://scripts/autoloads/AudioManager.gd
+Transition      →  res://scenes/ui/Transition.tscn  <span class="cm"># (escena)</span></code></pre>
+        </div>
+        <div class="code-block">
+          <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">GameManager.gd</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+          <pre><code><span class="kw">extends</span> <span class="cls">Node</span>
+
+<span class="kw">enum</span> <span class="cls">GameState</span> { PLAYING, PAUSED, MENU, CUTSCENE, GAME_OVER }
+
+<span class="kw">var</span> <span class="var">state</span>: <span class="cls">GameState</span> = <span class="cls">GameState</span>.<span class="var">PLAYING</span>
+
+<span class="kw">signal</span> <span class="var">state_changed</span>(<span class="var">new_state</span>: <span class="cls">GameState</span>)
+
+<span class="kw">func</span> <span class="fn">set_state</span>(<span class="var">new_state</span>: <span class="cls">GameState</span>) -> <span class="kw">void</span>:
+    <span class="kw">if</span> <span class="var">state</span> == <span class="var">new_state</span>: <span class="kw">return</span>
+    <span class="var">state</span> = <span class="var">new_state</span>
+    state_changed.emit(<span class="var">new_state</span>)
+    get_tree().<span class="var">paused</span> = <span class="var">new_state</span> == <span class="cls">GameState</span>.<span class="var">PAUSED</span>
+
+<span class="kw">func</span> <span class="fn">pause</span>() -> <span class="kw">void</span>:
+    set_state(<span class="cls">GameState</span>.<span class="var">PAUSED</span>)
+
+<span class="kw">func</span> <span class="fn">resume</span>() -> <span class="kw">void</span>:
+    set_state(<span class="cls">GameState</span>.<span class="var">PLAYING</span>)</code></pre>
+        </div>
+        <div class="tip"><strong>💡</strong> Para que un nodo siga funcionando en pausa (como el menú de pausa), activa en el Inspector: <code class="inline">Process Mode → Always</code>.</div>
+      </div>
+
+      <div class="nav-footer">
+        <button class="nav-btn" onclick="navigate('pixelart','Pixel Art','Shaders Pixel')">
+          <span class="nav-dir">← Anterior</span>
+          <span>Shaders Pixel</span>
+        </button>
+        <button class="nav-btn right" onclick="navigate('reference','Referencia','Cheat Sheet')">
+          <span class="nav-dir">Siguiente →</span>
+          <span>Referencia</span>
+        </button>
+      </div>
+    </div><!-- /section-sistemas -->
+
+    <!-- ======================================================
+         SECTION: REFERENCIA
+    ====================================================== -->
+    <div id="section-reference" class="section">
+
+      <div id="page-Cheat Sheet">
+        <div class="section-header">
+          <span class="section-number">07</span>
+          <div><div class="section-title">Referencia <span class="dim">// Cheat Sheet GDScript</span></div></div>
+        </div>
+        <h2>Métodos de nodo más usados</h2>
+        <table class="data-table">
+          <thead><tr><th>Método</th><th>Descripción</th></tr></thead>
+          <tbody>
+            <tr><td><code>queue_free()</code></td><td>Destruir nodo al final del frame</td></tr>
+            <tr><td><code>get_parent()</code></td><td>Nodo padre</td></tr>
+            <tr><td><code>add_child(node)</code></td><td>Añadir nodo hijo</td></tr>
+            <tr><td><code>get_node("path")</code></td><td>Obtener nodo por ruta</td></tr>
+            <tr><td><code>has_node("path")</code></td><td>Verificar si nodo existe</td></tr>
+            <tr><td><code>is_in_group("g")</code></td><td>Pertenece al grupo</td></tr>
+            <tr><td><code>set_process(bool)</code></td><td>Activar/desactivar _process</td></tr>
+            <tr><td><code>await signal</code></td><td>Esperar que una señal se emita</td></tr>
+            <tr><td><code>create_tween()</code></td><td>Crear tween para animaciones</td></tr>
+            <tr><td><code>preload("res://")</code></td><td>Cargar recurso en compilación</td></tr>
+          </tbody>
+        </table>
+        <h2>Vector2 — operaciones clave</h2>
+        <div class="code-block">
+          <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">vector2_cheatsheet.gd</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+          <pre><code><span class="kw">var</span> <span class="var">a</span> = <span class="cls">Vector2</span>(<span class="num">100</span>, <span class="num">50</span>)
+<span class="kw">var</span> <span class="var">b</span> = <span class="cls">Vector2</span>(<span class="num">200</span>, <span class="num">100</span>)
+
+<span class="var">a</span>.length()               <span class="cm"># magnitud (distancia al origen)</span>
+<span class="var">a</span>.normalized()           <span class="cm"># vector unitario (misma dirección, largo=1)</span>
+<span class="var">a</span>.distance_to(<span class="var">b</span>)         <span class="cm"># distancia entre a y b</span>
+<span class="var">a</span>.lerp(<span class="var">b</span>, <span class="num">0.5</span>)           <span class="cm"># interpolación lineal (punto medio)</span>
+<span class="var">a</span>.dot(<span class="var">b</span>)                  <span class="cm"># producto punto (detección de frente/detrás)</span>
+<span class="var">a</span>.angle_to(<span class="var">b</span>)            <span class="cm"># ángulo entre vectores</span>
+<span class="var">a</span>.rotated(PI / <span class="num">2</span>)        <span class="cm"># rotar 90°</span>
+<span class="cls">Vector2</span>.<span class="var">ZERO</span>              <span class="cm"># (0, 0)</span>
+<span class="cls">Vector2</span>.<span class="var">RIGHT</span>             <span class="cm"># (1, 0)</span>
+<span class="cls">Vector2</span>.<span class="var">UP</span>                <span class="cm"># (0,-1)  ← en Godot Y crece hacia abajo</span>
+<span class="cls">Vector2</span>.from_angle(<span class="var">angle</span>) <span class="cm"># vector desde ángulo en radianes</span></code></pre>
+        </div>
+      </div>
+
+      <div id="page-Patrones comunes" style="display:none">
+        <div class="section-header">
+          <span class="section-number">07</span>
+          <div><div class="section-title">Referencia <span class="dim">// Patrones comunes Metroidvania</span></div></div>
+        </div>
+        <div class="code-block">
+          <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">patterns.gd</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+          <pre><code><span class="cm"># ── 1. State Machine simple con match ──</span>
+<span class="kw">enum</span> <span class="cls">State</span> {IDLE, RUN, JUMP, FALL, ATTACK, HURT}
+<span class="kw">var</span> <span class="var">state</span>: <span class="cls">State</span> = <span class="cls">State</span>.<span class="var">IDLE</span>
+
+<span class="kw">func</span> <span class="fn">_physics_process</span>(<span class="var">d</span>: <span class="cls">float</span>) -> <span class="kw">void</span>:
+    <span class="kw">match</span> <span class="var">state</span>:
+        <span class="cls">State</span>.<span class="var">IDLE</span>:   <span class="fn">_state_idle</span>(<span class="var">d</span>)
+        <span class="cls">State</span>.<span class="var">RUN</span>:    <span class="fn">_state_run</span>(<span class="var">d</span>)
+        <span class="cls">State</span>.<span class="var">JUMP</span>:   <span class="fn">_state_jump</span>(<span class="var">d</span>)
+        <span class="cls">State</span>.<span class="var">ATTACK</span>: <span class="fn">_state_attack</span>(<span class="var">d</span>)
+
+<span class="cm"># ── 2. Interactable (cofres, NPCs, puertas) ──</span>
+<span class="kw">class_name</span> <span class="cls">Interactable</span>
+<span class="kw">extends</span> <span class="cls">Area2D</span>
+
+<span class="kw">signal</span> <span class="var">interacted</span>
+
+<span class="kw">func</span> <span class="fn">_ready</span>() -> <span class="kw">void</span>:
+    add_to_group(<span class="str">"interactables"</span>)
+
+<span class="kw">func</span> <span class="fn">interact</span>() -> <span class="kw">void</span>:
+    interacted.emit()   <span class="cm"># subclase conecta esto</span>
+
+<span class="cm"># En Player.gd, cuando se pulsa E:</span>
+<span class="kw">var</span> <span class="var">nearby</span> = get_overlapping_areas().filter(
+    <span class="kw">func</span>(<span class="var">a</span>): <span class="kw">return</span> <span class="var">a</span>.is_in_group(<span class="str">"interactables"</span>))
+<span class="kw">if</span> <span class="var">nearby</span>.size() > <span class="num">0</span>:
+    <span class="var">nearby</span>[<span class="num">0</span>].interact()
+
+<span class="cm"># ── 3. Daño por área (spike, lava) ──</span>
+<span class="kw">extends</span> <span class="cls">Area2D</span>
+<span class="kw">@export</span> <span class="kw">var</span> <span class="var">damage_per_sec</span>: <span class="cls">int</span> = <span class="num">20</span>
+
+<span class="kw">func</span> <span class="fn">_process</span>(<span class="var">delta</span>: <span class="cls">float</span>) -> <span class="kw">void</span>:
+    <span class="kw">for</span> <span class="var">body</span> <span class="kw">in</span> get_overlapping_bodies():
+        <span class="kw">if</span> <span class="var">body</span>.is_in_group(<span class="str">"player"</span>):
+            <span class="var">body</span>.take_damage(int(<span class="var">damage_per_sec</span> * <span class="var">delta</span>))
+
+<span class="cm"># ── 4. Recolectable (HealthPickup, PowerUp) ──</span>
+<span class="kw">extends</span> <span class="cls">Area2D</span>
+<span class="kw">@export</span> <span class="kw">var</span> <span class="var">heal_amount</span>: <span class="cls">int</span> = <span class="num">20</span>
+
+<span class="kw">func</span> <span class="fn">_ready</span>() -> <span class="kw">void</span>:
+    body_entered.connect(<span class="kw">func</span>(<span class="var">b</span>):
+        <span class="kw">if</span> <span class="var">b</span>.is_in_group(<span class="str">"player"</span>):
+            <span class="var">b</span>.heal(<span class="var">heal_amount</span>)
+            queue_free())</code></pre>
+        </div>
+      </div>
+
+      <div id="page-Recursos externos" style="display:none">
+        <div class="section-header">
+          <span class="section-number">07</span>
+          <div><div class="section-title">Referencia <span class="dim">// Recursos externos</span></div></div>
+        </div>
+        <h2>Documentación oficial</h2>
+        <div class="cards">
+          <div class="card">
+            <div class="card-icon">📚</div>
+            <div class="card-title">Docs oficiales</div>
+            <div class="card-desc">docs.godotengine.org — referencia completa de la API, tutoriales y guías.</div>
+          </div>
+          <div class="card">
+            <div class="card-icon">💬</div>
+            <div class="card-title">Godot Discord</div>
+            <div class="card-desc">discord.gg/godotengine — comunidad activa, canales de #help-gdscript y #2d-dev.</div>
+          </div>
+          <div class="card">
+            <div class="card-icon">🎮</div>
+            <div class="card-title">GDQuest</div>
+            <div class="card-desc">gdquest.com — tutoriales de alta calidad enfocados en Godot 4 y game design.</div>
+          </div>
+          <div class="card">
+            <div class="card-icon">🟥</div>
+            <div class="card-title">r/godot</div>
+            <div class="card-desc">reddit.com/r/godot — galería de proyectos, dudas y recursos compartidos.</div>
+          </div>
+          <div class="card">
+            <div class="card-icon">🎨</div>
+            <div class="card-title">Kenney.nl</div>
+            <div class="card-desc">Assets pixel art gratuitos y de dominio público. Perfectos para prototipar.</div>
+          </div>
+          <div class="card">
+            <div class="card-icon">🔊</div>
+            <div class="card-title">SFXR / Bfxr</div>
+            <div class="card-desc">Generadores de SFX retro. sfxr.me — crea sonidos chiptune en segundos.</div>
+          </div>
+          <div class="card">
+            <div class="card-icon">📏</div>
+            <div class="card-title">Aseprite</div>
+            <div class="card-desc">El editor de pixel art estándar de la industria indie. Exporta spritesheets perfectos.</div>
+          </div>
+          <div class="card">
+            <div class="card-icon">🗺️</div>
+            <div class="card-title">LDtk</div>
+            <div class="card-desc">ldtk.io — editor de niveles 2D con excelente integración para Godot.</div>
+          </div>
+        </div>
+        <h2>Checklist final: tu metroidvania mínimo viable</h2>
+        <div class="checklist">
+          <li onclick="toggleCheck(this)"><span class="cb"></span>Jugador con movimiento, salto y colisión</li>
+          <li onclick="toggleCheck(this)"><span class="cb"></span>Al menos 3 animaciones: idle, run, jump</li>
+          <li onclick="toggleCheck(this)"><span class="cb"></span>Coyote time + jump buffer implementados</li>
+          <li onclick="toggleCheck(this)"><span class="cb"></span>Sistema de vida (health + daño)</li>
+          <li onclick="toggleCheck(this)"><span class="cb"></span>Al menos 2 habitaciones conectadas con transición</li>
+          <li onclick="toggleCheck(this)"><span class="cb"></span>Un enemigo básico con patrulla y persecución</li>
+          <li onclick="toggleCheck(this)"><span class="cb"></span>Una habilidad desbloqueable (ej: doble salto)</li>
+          <li onclick="toggleCheck(this)"><span class="cb"></span>Una puerta que requiere la habilidad</li>
+          <li onclick="toggleCheck(this)"><span class="cb"></span>Sistema de guardado y carga</li>
+          <li onclick="toggleCheck(this)"><span class="cb"></span>HUD con barra de vida</li>
+          <li onclick="toggleCheck(this)"><span class="cb"></span>Música de fondo + al menos 3 SFX</li>
+          <li onclick="toggleCheck(this)"><span class="cb"></span>Pixel art configurado correctamente (Nearest filter)</li>
+          <li onclick="toggleCheck(this)"><span class="cb"></span>Pantalla de menú principal</li>
+          <li onclick="toggleCheck(this)"><span class="cb"></span>Game Over con opción de reinicio</li>
+        </div>
+      </div>
+
+      <div class="nav-footer">
+        <button class="nav-btn" onclick="navigate('sistemas','Sistemas','Autoloads')">
+          <span class="nav-dir">← Anterior</span>
+          <span>Autoloads</span>
+        </button>
+        <button class="nav-btn right" onclick="navigate('build','Build the Game','Blueprint')">
+          <span class="nav-dir">Siguiente →</span>
+          <span>Blueprint</span>
+        </button>
+      </div>
+    </div><!-- /section-reference -->
+
+    <!-- ======================================================
+         SECTION: BUILD THE GAME
+    ====================================================== -->
+    <div id="section-build" class="section">
+      <div id="build-mount"></div>
+    </div><!-- /section-build -->
+
+  </div><!-- /content -->
+</main><!-- /main -->
+
+<!-- HAMBURGER -->
+<button class="hamburger" id="hamburger" onclick="openSidebar()">☰</button>
+
+<script>
+/* ============================================================
+   NAVIGATION & STATE
+   ============================================================ */
+const STORAGE_KEY = 'gdscript-guide-state-v3';
+const PAGES = {
+  intro: {
+    pages: ['El Entorno', 'Instalación', 'Editor'],
+    title: 'Introducción'
+  },
+  gdscript: {
+    pages: ['Variables y Tipos', 'Funciones', 'Control de Flujo', 'Arrays y Diccionarios', 'Clases y POO'],
+    title: 'GDScript Bases'
+  },
+  nodes: {
+    pages: ['Árbol de Nodos', 'Señales', 'Grupos', 'Instancias'],
+    title: 'Nodos y Escenas'
+  },
+  player: {
+    pages: ['CharacterBody2D', 'Input & Movimiento', 'Animaciones', 'Cámara 2D'],
+    title: 'Jugador 2D'
+  },
+  metroidvania: {
+    pages: ['Diseño de Salas', 'TileMap 2D', 'Sistema de Habilidades', 'Enemigos & IA', 'Transiciones'],
+    title: 'Metroidvania'
+  },
+  pixelart: {
+    pages: ['Config Proyecto', 'AnimatedSprite2D', 'Luces 2D', 'Shaders Pixel'],
+    title: 'Pixel Art'
+  },
+  sistemas: {
+    pages: ['Save/Load', 'HUD & UI', 'Audio', 'Autoloads'],
+    title: 'Sistemas'
+  },
+  reference: {
+    pages: ['Cheat Sheet', 'Patrones comunes', 'Recursos externos'],
+    title: 'Referencia'
+  },
+  build: {
+    pages: ['Blueprint'],
+    title: 'Build the Game'
+  }
+};
+
+const QUIZZES = {
+  intro: {
+    q: '¿Qué nodo raíz es el más apropiado para una escena 2D normal?',
+    options: [
+      ['Node2D', true],
+      ['ViewportTexture', false],
+      ['AudioStreamPlayer', false],
+      ['Control', false]
+    ],
+    ok: 'Node2D es la base 2D. Mantiene transformación espacial y sirve como raíz limpia.',
+    ko: 'La respuesta correcta es Node2D.'
+  },
+  gdscript: {
+    q: '¿Qué anotación expone una variable en el Inspector?',
+    options: [
+      ['@onready', false],
+      ['@export', true],
+      ['@signal', false],
+      ['@static', false]
+    ],
+    ok: '@export expone la variable en el Inspector.',
+    ko: 'La respuesta correcta es @export.'
+  },
+  nodes: {
+    q: '¿Qué sistema de Godot desacopla eventos entre nodos?',
+    options: [
+      ['Groups', false],
+      ['Signals', true],
+      ['Autoloads', false],
+      ['Resources', false]
+    ],
+    ok: 'Signals permiten comunicación sin acoplamiento fuerte.',
+    ko: 'La respuesta correcta es Signals.'
+  },
+  player: {
+    q: '¿Dónde debe ir el movimiento del jugador?',
+    options: [
+      ['_ready()', false],
+      ['_process()', false],
+      ['_physics_process()', true],
+      ['_input()', false]
+    ],
+    ok: '_physics_process() es el lugar correcto para movimiento y física.',
+    ko: 'La respuesta correcta es _physics_process().'
+  },
+  metroidvania: {
+    q: '¿Qué autoload carga y descarga salas?',
+    options: [
+      ['GameManager', false],
+      ['RoomManager', true],
+      ['SaveSystem', false],
+      ['AbilitySystem', false]
+    ],
+    ok: 'RoomManager coordina la navegación de salas.',
+    ko: 'La respuesta correcta es RoomManager.'
+  },
+  pixelart: {
+    q: '¿Qué filtro evita blur en sprites pixel art?',
+    options: [
+      ['Linear', false],
+      ['Anisotropic', false],
+      ['Nearest', true],
+      ['Bilinear', false]
+    ],
+    ok: 'Nearest mantiene bordes duros y evita filtrado.',
+    ko: 'La respuesta correcta es Nearest.'
+  },
+  sistemas: {
+    q: '¿Qué ruta es apropiada para guardar partidas en Godot?',
+    options: [
+      ['res://', false],
+      ['user://', true],
+      ['root://', false],
+      ['tmp://', false]
+    ],
+    ok: 'user:// apunta al almacenamiento de usuario, no al paquete de proyecto.',
+    ko: 'La respuesta correcta es user://.'
+  },
+  reference: {
+    q: '¿Qué método libera un nodo al final del frame?',
+    options: [
+      ['queue_free()', true],
+      ['free()', false],
+      ['remove_child()', false],
+      ['destroy()', false]
+    ],
+    ok: 'queue_free() libera el nodo de forma segura al final del frame.',
+    ko: 'La respuesta correcta es queue_free().'
+  },
+  build: {
+    q: 'Al pulsar F6 en la fase de setup, ¿qué debe pasar?',
+    options: [
+      ['La cámara hace zoom', false],
+      ['El personaje cae con gravedad y se detiene en el suelo', true],
+      ['Se abre el export preset', false],
+      ['Se generan los shaders', false]
+    ],
+    ok: 'El checkpoint de setup es física básica funcionando sin errores.',
+    ko: 'La respuesta correcta es que el personaje caiga y colisione con el suelo.'
+  }
+};
+
+const BUILD_PHASES = [
+  {
+    key: 'setup',
+    num: '0',
+    label: 'Setup',
+    title: 'Foundation / Project Boot',
+    subtitle: 'Cold blue. Create the root scene, project settings, and first player loop.',
+    theme: 'setup',
+    diagramTitle: 'Scene diagram',
+    diagram: [
+      { x: 210, y: 20, w: 110, h: 34, label: 'World', type: 'Node2D', root: true },
+      { x: 46, y: 92, w: 120, h: 34, label: 'Player', type: 'PackedScene', kind: 'child' },
+      { x: 198, y: 92, w: 122, h: 34, label: 'Camera2D', type: 'child' },
+      { x: 360, y: 92, w: 108, h: 34, label: 'Ground', type: 'StaticBody2D', kind: 'child' },
+      { x: 48, y: 168, w: 120, h: 34, label: 'Script', type: 'Player.gd', kind: 'child' }
+    ],
+    links: [
+      [0, 1], [0, 2], [0, 3], [1, 4]
+    ],
+    timeline: [
+      ['Start', 'main.tscn only'],
+      ['End', 'main.tscn + Player.tscn + Player.gd + Input Map']
+    ],
+    assets: [
+      ['SPRITE HERE', 'Player 32x32 PNG, 4 frames, nearest filter, transparent background.'],
+      ['SPRITE HERE', 'Ground tile 16x16 PNG, loopable edges, lossless import.']
+    ],
+    checkpoint: 'Press F6. The player must fall with gravity, collide with the ground, and stop. If not, verify the collision shape and the physics code.',
+    codeFile: 'player.gd',
+    codeLang: 'GDScript',
+    code: `extends CharacterBody2D
+class_name Player
+
+@export var speed := 160.0
+const GRAVITY := 980.0
+
+func _physics_process(delta: float) -> void:
+    if not is_on_floor():
+        velocity.y += GRAVITY * delta
+    velocity.x = Input.get_axis("move_left", "move_right") * speed
+    if Input.is_action_just_pressed("jump") and is_on_floor():
+        velocity.y = -340.0
+    move_and_slide()`,
+    reference: ['Node2D', 'CharacterBody2D', '_physics_process', 'move_and_slide']
+  },
+  {
+    key: 'movement',
+    num: '1',
+    label: 'Movement',
+    title: 'Input / Jump Feel',
+    subtitle: 'Terminal green. Add coyote time, input map, and animation state switching.',
+    theme: 'movement',
+    diagramTitle: 'Node order',
+    diagram: [
+      { x: 220, y: 18, w: 100, h: 34, label: 'Player', type: 'CharacterBody2D', root: true },
+      { x: 54, y: 96, w: 118, h: 34, label: 'Sprite', type: 'AnimatedSprite2D', kind: 'child' },
+      { x: 204, y: 96, w: 118, h: 34, label: 'Collision', type: 'CollisionShape2D', kind: 'child' },
+      { x: 354, y: 96, w: 116, h: 34, label: 'Input', type: 'Actions', kind: 'child' }
+    ],
+    links: [[0, 1], [0, 2], [0, 3]],
+    timeline: [['Start', 'Player.gd from setup'], ['End', 'Player.gd + Input Map + animation states']],
+    assets: [['SPRITE HERE', 'Spritesheet 64x32, 4 run frames, 4 idle frames, import as SpriteFrames.']],
+    checkpoint: 'Press F6 and verify left/right input, jump buffering, and coyote time. If the jump feels sticky, inspect delta handling and floor checks.',
+    codeFile: 'input_movement.gd',
+    codeLang: 'GDScript',
+    code: `@export var coyote_time := 0.12
+@export var jump_buffer := 0.10
+var coyote_timer := 0.0
+var buffer_timer := 0.0
+
+func _physics_process(delta: float) -> void:
+    if is_on_floor():
+        coyote_timer = coyote_time
+    else:
+        coyote_timer -= delta
+
+    if Input.is_action_just_pressed("jump"):
+        buffer_timer = jump_buffer
+    else:
+        buffer_timer -= delta
+
+    if buffer_timer > 0.0 and coyote_timer > 0.0:
+        velocity.y = -340.0
+        buffer_timer = 0.0
+        coyote_timer = 0.0`,
+    reference: ['Input Map', 'coyote_time', 'jump_buffer', 'velocity']
+  },
+  {
+    key: 'world',
+    num: '2',
+    label: 'World',
+    title: 'Rooms / Tile Grid',
+    subtitle: 'Earth brown. Build the room structure, tile layers, and streaming room manager.',
+    theme: 'world',
+    diagramTitle: 'Room stack',
+    diagram: [
+      { x: 220, y: 18, w: 100, h: 34, label: 'World', type: 'Node2D', root: true },
+      { x: 54, y: 96, w: 130, h: 34, label: 'RoomManager', type: 'Autoload', kind: 'child' },
+      { x: 212, y: 96, w: 116, h: 34, label: 'TileMap', type: 'TileMapLayer', kind: 'child' },
+      { x: 356, y: 96, w: 112, h: 34, label: 'Door', type: 'Area2D', kind: 'child' }
+    ],
+    links: [[0, 1], [0, 2], [0, 3]],
+    timeline: [['Start', 'Main scene only'], ['End', 'rooms/ + tiles/ + autoload room manager']],
+    assets: [['SPRITE HERE', 'Tileset atlas 16x16 or 32x32, lossless PNG, repeat disabled.']],
+    checkpoint: 'Press F6. The player should spawn inside a room, hit tile collisions, and survive room transitions without teleport glitches.',
+    codeFile: 'RoomManager.gd',
+    codeLang: 'GDScript',
+    code: `extends Node
+class_name RoomManager
+
+var current_room: Node = null
+
+func load_room(path: String, spawn_point: String = "default") -> void:
+    if current_room:
+        current_room.queue_free()
+        await get_tree().process_frame
+    current_room = load(path).instantiate()
+    get_tree().current_scene.add_child(current_room)`,
+    reference: ['TileMapLayer', 'load()', 'instantiate()', 'queue_free()']
+  },
+  {
+    key: 'states',
+    num: '3',
+    label: 'States',
+    title: 'State Machine / Signals',
+    subtitle: 'Electric violet. Give the player readable states and event-driven damage flow.',
+    theme: 'states',
+    diagramTitle: 'Behavior graph',
+    diagram: [
+      { x: 220, y: 18, w: 100, h: 34, label: 'Player', type: 'State machine', root: true },
+      { x: 44, y: 96, w: 112, h: 34, label: 'Idle', type: 'State', kind: 'child' },
+      { x: 180, y: 96, w: 112, h: 34, label: 'Run', type: 'State', kind: 'child' },
+      { x: 316, y: 96, w: 118, h: 34, label: 'Jump', type: 'State', kind: 'child' },
+      { x: 180, y: 168, w: 132, h: 34, label: 'health_changed', type: 'signal', kind: 'child' }
+    ],
+    links: [[0, 1], [0, 2], [0, 3], [0, 4]],
+    timeline: [['Start', 'Movement loop exists'], ['End', 'Player.gd + signals + HUD events']],
+    assets: [['SPRITE HERE', 'State icons 24x24 optional, transparent PNG, one per state.']],
+    checkpoint: 'Press F6 and trigger a hit. The player should react, the state should change, and the HUD must update without direct coupling.',
+    codeFile: 'PlayerStates.gd',
+    codeLang: 'GDScript',
+    code: `signal health_changed(value: int)
+
+enum State { IDLE, RUN, JUMP, FALL, HURT }
+var state: State = State.IDLE
+
+func take_damage(amount: int) -> void:
+    health = max(0, health - amount)
+    health_changed.emit(health)`,
+    reference: ['signal', 'enum', 'emit()', 'State']
+  },
+  {
+    key: 'danger',
+    num: '4',
+    label: 'Danger',
+    title: 'Enemies / Hazards',
+    subtitle: 'Deep red. Add enemies, spikes, and readable failure states.',
+    theme: 'danger',
+    diagramTitle: 'Threat tree',
+    diagram: [
+      { x: 220, y: 18, w: 100, h: 34, label: 'Enemy', type: 'CharacterBody2D', root: true },
+      { x: 52, y: 96, w: 106, h: 34, label: 'AI', type: 'State machine', kind: 'child' },
+      { x: 182, y: 96, w: 108, h: 34, label: 'Hitbox', type: 'Area2D', kind: 'child' },
+      { x: 314, y: 96, w: 122, h: 34, label: 'Spike', type: 'Hazard', kind: 'child' }
+    ],
+    links: [[0, 1], [0, 2], [0, 3]],
+    timeline: [['Start', 'Player damage exists'], ['End', 'enemy_base.gd + hazards + death feedback']],
+    assets: [['SPRITE HERE', 'Enemy sprite sheet 32x32, 6 frames patrol, 4 frames hurt.']],
+    checkpoint: 'Press F6. Enemies must patrol or chase, hazards must damage the player, and death should be explicit instead of silent.',
+    codeFile: 'enemy_base.gd',
+    codeLang: 'GDScript',
+    code: `extends CharacterBody2D
+
+func _physics_process(delta: float) -> void:
+    if not is_on_floor():
+        velocity.y += 980.0 * delta
+    move_and_slide()`,
+    reference: ['Area2D', 'move_and_slide()', 'take_damage()', 'queue_free()']
+  },
+  {
+    key: 'interconnect',
+    num: '5',
+    label: 'Interconnection',
+    title: 'Save / HUD / Audio',
+    subtitle: 'Deep cyan. Connect the experience into a single usable loop.',
+    theme: 'interconnect',
+    diagramTitle: 'System bus',
+    diagram: [
+      { x: 220, y: 18, w: 100, h: 34, label: 'GameManager', type: 'autoload', root: true },
+      { x: 48, y: 96, w: 118, h: 34, label: 'SaveSystem', type: 'autoload', kind: 'child' },
+      { x: 196, y: 96, w: 110, h: 34, label: 'HUD', type: 'CanvasLayer', kind: 'child' },
+      { x: 336, y: 96, w: 122, h: 34, label: 'AudioManager', type: 'autoload', kind: 'child' }
+    ],
+    links: [[0, 1], [0, 2], [0, 3]],
+    timeline: [['Start', 'Core gameplay loop'], ['End', 'autoloads + save files + UI feedback']],
+    assets: [['SPRITE HERE', 'HUD icons 16x16 in a PNG atlas, transparent background.']],
+    checkpoint: 'Press F6, then save and reload. The room state, health, and abilities should come back after a refresh or reload.',
+    codeFile: 'SaveSystem.gd',
+    codeLang: 'GDScript',
+    code: `const SAVE_PATH := "user://savegame.json"
+
+func save(data: Dictionary) -> void:
+    var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+    file.store_string(JSON.stringify(data))
+
+func load_game() -> Dictionary:
+    if not FileAccess.file_exists(SAVE_PATH):
+        return {}`,
+    reference: ['user://', 'Autoload', 'FileAccess', 'JSON.stringify()']
+  },
+  {
+    key: 'progression',
+    num: '6',
+    label: 'Progression',
+    title: 'Abilities / Doors',
+    subtitle: 'Golden energy. Expand the map with gated abilities and readable unlocks.',
+    theme: 'progression',
+    diagramTitle: 'Unlock flow',
+    diagram: [
+      { x: 220, y: 18, w: 100, h: 34, label: 'AbilitySystem', type: 'autoload', root: true },
+      { x: 48, y: 96, w: 120, h: 34, label: 'Double Jump', type: 'unlock', kind: 'child' },
+      { x: 190, y: 96, w: 108, h: 34, label: 'Dash', type: 'unlock', kind: 'child' },
+      { x: 320, y: 96, w: 126, h: 34, label: 'DoorTrigger', type: 'Area2D', kind: 'child' }
+    ],
+    links: [[0, 1], [0, 2], [0, 3]],
+    timeline: [['Start', 'Save/load works'], ['End', 'abilities + locked doors + checkpoints']],
+    assets: [['SPRITE HERE', 'Power-up sprite 24x24, 1 frame or 4-frame sparkle, PNG.']],
+    checkpoint: 'Press F6. You should be able to unlock an ability, reopen the save, and see a door react to the unlock state.',
+    codeFile: 'AbilitySystem.gd',
+    codeLang: 'GDScript',
+    code: `var abilities := {
+    "double_jump": false,
+    "dash": false
+}
+
+func unlock(name: String) -> void:
+    if abilities.has(name):
+        abilities[name] = true`,
+    reference: ['Dictionary', 'Autoload', 'ability_unlocked', 'DoorTrigger']
+  },
+  {
+    key: 'polish',
+    num: '7',
+    label: 'Polish',
+    title: 'Camera / FX / Shader Layer',
+    subtitle: 'White over black. Add impact, flash, screenshake, and visual clarity.',
+    theme: 'polish',
+    diagramTitle: 'Finish layer',
+    diagram: [
+      { x: 220, y: 18, w: 100, h: 34, label: 'Camera2D', type: 'follow', root: true },
+      { x: 54, y: 96, w: 116, h: 34, label: 'Shake', type: 'Tween', kind: 'child' },
+      { x: 198, y: 96, w: 118, h: 34, label: 'Flash', type: 'Shader', kind: 'child' },
+      { x: 344, y: 96, w: 116, h: 34, label: 'Particles', type: 'FX', kind: 'child' }
+    ],
+    links: [[0, 1], [0, 2], [0, 3]],
+    timeline: [['Start', 'Playable loop exists'], ['End', 'camera shake + flash shader + clean feedback']],
+    assets: [['SPRITE HERE', 'Hit flash texture or shader-driven white overlay, no network dependency.']],
+    checkpoint: 'Press F6 after taking damage. The screen should flash, the camera should move with intention, and the result should feel punchy.',
+    codeFile: 'camera2d.gd',
+    codeLang: 'GDScript',
+    code: `func shake(strength: float, duration: float) -> void:
+    var tween := create_tween()
+    tween.tween_property(self, "offset", Vector2.ZERO, duration)`,
+    reference: ['Camera2D', 'create_tween()', 'ShaderMaterial', 'CanvasLayer']
+  },
+  {
+    key: 'export',
+    num: '8',
+    label: 'Export',
+    title: 'Ship / macOS Package',
+    subtitle: 'Metallic silver. Final checks, export presets, and a release checklist.',
+    theme: 'export',
+    diagramTitle: 'Release pipeline',
+    diagram: [
+      { x: 220, y: 18, w: 100, h: 34, label: 'Project', type: 'clean', root: true },
+      { x: 50, y: 96, w: 110, h: 34, label: 'Export', type: 'Preset', kind: 'child' },
+      { x: 186, y: 96, w: 116, h: 34, label: 'QA', type: 'F6 / refresh', kind: 'child' },
+      { x: 332, y: 96, w: 128, h: 34, label: 'Archive', type: 'zip/dmg', kind: 'child' }
+    ],
+    links: [[0, 1], [0, 2], [0, 3]],
+    timeline: [['Start', 'All gameplay systems complete'], ['End', 'export preset + release build + QA pass']],
+    assets: [['SPRITE HERE', 'App icon 1024x1024 PNG, sRGB, no transparency issues.']],
+    checkpoint: 'Press F6 one last time. If anything fails here, stop and fix it before exporting. Shipping broken builds is the most expensive bug.',
+    codeFile: 'export.cfg',
+    codeLang: 'Config',
+    code: `[preset.0]
+name="macOS"
+platform="macOS"
+export_path="dist/Game.app"
+
+[preset.0.options]
+application/name="Your Game"
+application/icon="res://icon.png"`,
+    reference: ['Export Preset', 'App icon', 'QA pass', 'dist/']
+  }
+];
+
+const visited = new Set();
+const TOTAL_PAGES = Object.values(PAGES).reduce((s, v) => s + v.pages.length, 0);
+const sectionTitles = Object.fromEntries(Object.entries(PAGES).map(([key, value]) => [key, value.title]));
+const buildSectionId = 'section-build';
+
+let currentSection = 'intro';
+let currentPage = 'El Entorno';
+let buildPhase = 0;
+let lastState = null;
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function saveState() {
+  const payload = {
+    currentSection,
+    currentPage,
+    buildPhase,
+    codeOnly: document.body.classList.contains('code-only'),
+    visited: [...visited],
+    openSections: [...document.querySelectorAll('.tree-section.open')].map(el => el.dataset.section),
+    checks: [...document.querySelectorAll('.checklist li.done')].map(li => li.dataset.persistKey || li.textContent.trim())
+  };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+}
+
+function loadState() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+  } catch {
+    return null;
+  }
+}
+
+function updateProgress() {
+  const pct = Math.round((visited.size / TOTAL_PAGES) * 100);
+  document.getElementById('progress-text').textContent = pct + '%';
+  document.getElementById('progress-fill').style.width = pct + '%';
+}
+
+function setFlash() {
+  document.body.classList.remove('flash-transition');
+  void document.body.offsetWidth;
+  document.body.classList.add('flash-transition');
+  window.setTimeout(() => document.body.classList.remove('flash-transition'), 220);
+}
+
+function syncBuildPhase() {
+  document.querySelectorAll('.build-phase-shell').forEach((el, i) => {
+    el.classList.toggle('active', i === buildPhase);
+  });
+  document.querySelectorAll('.phase-switcher button').forEach((btn, i) => {
+    btn.classList.toggle('active', i === buildPhase);
+  });
+  document.querySelectorAll('.build-phase-card').forEach((card, i) => {
+    card.classList.toggle('active', i === buildPhase);
+  });
+}
+
+function setActiveSidebarItem(pageName) {
+  const items = [...document.querySelectorAll('.tree-item')];
+  items.forEach(i => i.classList.remove('active'));
+  const target = items.find(i => {
+    const text = i.textContent.trim();
+    const fn = i.getAttribute('onclick') || '';
+    return fn.includes(`'${pageName}'`) || fn.includes(`"${pageName}"`) || text.includes(pageName);
+  });
+  if (target) {
+    target.classList.add('active');
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        target.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      });
+    });
+  }
+}
+
+function openSidebarSection(sectionKey) {
+  document.querySelectorAll('.tree-section').forEach(ts => {
+    if (ts.dataset.section === sectionKey) {
+      ts.classList.add('open');
+    }
+  });
+}
+
+function navigate(sectionKey, sectionTitle, pageName, options = {}) {
+  const sec = document.getElementById('section-' + sectionKey);
+  if (!sec) return;
+
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active-section'));
+  sec.classList.add('active-section');
+
+  const sData = PAGES[sectionKey];
+  if (sData) {
+    sData.pages.forEach(p => {
+      const el = document.getElementById('page-' + p);
+      if (el) el.style.display = p === pageName ? 'block' : 'none';
+    });
+  }
+
+  document.getElementById('bc-section').textContent = sectionTitle;
+  document.getElementById('bc-page').textContent = pageName;
+
+  currentSection = sectionKey;
+  currentPage = pageName;
+
+  if (sectionKey === 'build' && options.noSync !== true) {
+    buildPhase = typeof options.phase === 'number' ? options.phase : buildPhase;
+    syncBuildPhase();
+  }
+
+  openSidebarSection(sectionKey);
+  setActiveSidebarItem(pageName);
+
+  if (options.flash !== false) {
+    setFlash();
+  }
+
+  document.getElementById('main').scrollTo({ top: 0, behavior: 'auto' });
+  window.scrollTo({ top: 0, behavior: 'auto' });
+  closeSidebar();
+
+  visited.add(sectionKey + ':' + pageName);
+  updateProgress();
+
+  if (!options.skipSave) saveState();
+}
+
+function toggleSection(el) {
+  const section = el.parentElement;
+  section.classList.toggle('open');
+  saveState();
+}
+
+function renderQuiz(sectionKey) {
+  const quiz = QUIZZES[sectionKey];
+  if (!quiz) return '';
+  const options = quiz.options.map(([label, correct], index) => `
+    <div class="quiz-opt" onclick="answer(this, ${correct})"><span>${String.fromCharCode(65 + index)}</span> ${label}</div>
+  `).join('');
+  return `
+    <div class="quiz" data-quiz="${sectionKey}">
+      <div class="quiz-q">${escapeHtml(quiz.q)}</div>
+      <div class="quiz-options">${options}</div>
+      <div class="quiz-feedback"></div>
+    </div>
+  `;
+}
+
+function injectQuizzes() {
+  Object.keys(QUIZZES).forEach(sectionKey => {
+    const section = document.getElementById('section-' + sectionKey);
+    if (!section || sectionKey === 'build') return;
+    const footer = section.querySelector('.nav-footer');
+    if (!footer || section.querySelector('.quiz')) return;
+    footer.insertAdjacentHTML('beforebegin', renderQuiz(sectionKey));
+  });
+}
+
+function makeNodeDiagram(phase) {
+  const width = 520;
+  const height = 230;
+  const nodes = phase.diagram.map((node, index) => {
+    const cls = node.root ? 'node-box node-root' : 'node-box node-child';
+    const x = node.x;
+    const y = node.y;
+    return `
+      <g class="node-hit" tabindex="0" transform="translate(${x},${y})">
+        <rect class="${cls}" rx="10" ry="10" width="${node.w}" height="${node.h}"></rect>
+        <text class="node-label" x="12" y="18">${escapeHtml(node.label)}</text>
+        <text class="node-type" x="12" y="28">${escapeHtml(node.type)}</text>
+      </g>
+    `;
+  }).join('');
+  const lines = phase.links.map(([a, b]) => {
+    const from = phase.diagram[a];
+    const to = phase.diagram[b];
+    const x1 = from.x + from.w / 2;
+    const y1 = from.y + from.h;
+    const x2 = to.x + to.w / 2;
+    const y2 = to.y;
+    return `<path class="node-link" d="M ${x1} ${y1} C ${x1} ${y1 + 22}, ${x2} ${y2 - 18}, ${x2} ${y2}"></path>`;
+  }).join('');
+  return `
+    <svg class="node-diagram" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(phase.diagramTitle)}">
+      <rect x="0" y="0" width="${width}" height="${height}" fill="rgba(13,17,23,.24)"></rect>
+      ${lines}
+      ${nodes}
+    </svg>
+  `;
+}
+
+function makeTimeline(rows) {
+  return `
+    <table class="timeline">
+      <thead><tr><th>Moment</th><th>Filesystem</th></tr></thead>
+      <tbody>
+        ${rows.map(([a, b]) => `<tr><td>${escapeHtml(a)}</td><td>${escapeHtml(b)}</td></tr>`).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function makeAssets(assets) {
+  return `<div class="phase-assets">${assets.map(([title, desc]) => `
+    <div class="asset-slot"><strong>${escapeHtml(title)}</strong>${escapeHtml(desc)}</div>
+  `).join('')}</div>`;
+}
+
+function makeReference(refs) {
+  return `<div class="phase-reference">${refs.map(ref => `<button type="button" class="ref-chip" onclick="navigate('reference','Referencia','Cheat Sheet')">${escapeHtml(ref)}</button>`).join('')}</div>`;
+}
+
+function makeCodeBlock(fileName, lang, code) {
+  return `
+    <div class="code-block">
+      <div class="code-block-header">
+        <span class="lang">${escapeHtml(lang)}</span>
+        <span class="file-name">${escapeHtml(fileName)}</span>
+        <button class="copy-btn" onclick="copyCode(this)">Copiar</button>
+      </div>
+      <pre><code>${escapeHtml(code)}</code></pre>
+    </div>
+  `;
+}
+
+function renderBuildSection() {
+  const mount = document.getElementById('build-mount');
+  if (!mount) return;
+
+  mount.innerHTML = `
+    <div class="section-header" data-divider="BLUEPRINT">
+      <span class="section-number">08</span>
+      <div>
+        <div class="section-title">Build the Game <span class="dim">// Blueprint</span></div>
+      </div>
+    </div>
+    <p>Three layers: a brutalist index, a phase-by-phase blueprint, and a quick reference per phase. Hover the index items to change the atmosphere and click into a specific phase.</p>
+    <div class="build-index">
+      ${BUILD_PHASES.map((phase, index) => `
+        <div class="build-phase-card" data-phase="${String(index).padStart(2, '0')}" onclick="setBuildPhase(${index}, { openSection: true })">
+          <div>
+            <div class="build-phase-label">${escapeHtml(phase.label)}</div>
+            <div class="build-phase-sub">${escapeHtml(phase.subtitle)}</div>
+          </div>
+          <div class="build-phase-go">enter phase</div>
+        </div>
+      `).join('')}
+    </div>
+    <div class="phase-switcher">
+      ${BUILD_PHASES.map((phase, index) => `<button type="button" onclick="setBuildPhase(${index}, { openSection: true })">${String(index).padStart(2, '0')} ${escapeHtml(phase.label)}</button>`).join('')}
+    </div>
+    ${BUILD_PHASES.map((phase, index) => `
+      <div class="build-phase-shell" id="build-phase-${index}" data-theme="${phase.theme}">
+        <div class="phase-head" data-num="${String(index).padStart(2, '0')}">
+          <h3>${escapeHtml(phase.title)}</h3>
+          <p>${escapeHtml(phase.subtitle)}</p>
+        </div>
+        <div class="build-phase-grid">
+          <div class="phase-panel">
+            <h4>${escapeHtml(phase.diagramTitle)}</h4>
+            ${makeNodeDiagram(phase)}
+            <h4>File timeline</h4>
+            ${makeTimeline(phase.timeline)}
+            <h4>Asset slots</h4>
+            ${makeAssets(phase.assets)}
+          </div>
+          <div class="phase-panel">
+            <h4>Testing checkpoint</h4>
+            <p>${escapeHtml(phase.checkpoint)}</p>
+            <h4>The code</h4>
+            ${makeCodeBlock(phase.codeFile, phase.codeLang, phase.code)}
+            <h4>Quick reference</h4>
+            ${makeReference(phase.reference)}
+          </div>
+        </div>
+      </div>
+    `).join('')}
+    <div class="nav-footer">
+      <button class="nav-btn" onclick="navigate('reference','Referencia','Recursos externos')">
+        <span class="nav-dir">← Anterior</span>
+        <span>Referencia</span>
+      </button>
+      <div></div>
+    </div>
+    ${renderQuiz('build')}
+  `;
+
+  setBuildPhase(lastState && typeof lastState.buildPhase === 'number' ? lastState.buildPhase : buildPhase, { persist: false });
+}
+
+function setBuildPhase(index, options = {}) {
+  buildPhase = Math.max(0, Math.min(BUILD_PHASES.length - 1, index));
+  syncBuildPhase();
+  if (options.openSection) {
+    navigate('build', 'Build the Game', 'Blueprint', { flash: true, skipSave: false, phase: buildPhase, noSync: true });
+  }
+  if (options.persist !== false) saveState();
+}
+
+function replaceNodeDiagrams() {
+  const diagrams = [
+    `
+      <svg class="node-diagram" viewBox="0 0 520 220" role="img" aria-label="Scene tree diagram">
+        <rect width="520" height="220" fill="rgba(13,17,23,.18)"></rect>
+        <path class="node-link" d="M 260 54 C 260 76, 120 82, 120 100"></path>
+        <path class="node-link" d="M 260 54 C 260 76, 260 82, 260 100"></path>
+        <path class="node-link" d="M 260 54 C 260 76, 400 82, 400 100"></path>
+        <g class="node-hit" transform="translate(206,20)"><rect class="node-box node-root" rx="10" ry="10" width="108" height="34"></rect><text class="node-label" x="12" y="18">World</text><text class="node-type" x="12" y="28">Node2D</text></g>
+        <g class="node-hit" transform="translate(64,100)"><rect class="node-box node-child" rx="10" ry="10" width="112" height="34"></rect><text class="node-label" x="12" y="18">Player</text><text class="node-type" x="12" y="28">CharacterBody2D</text></g>
+        <g class="node-hit" transform="translate(202,100)"><rect class="node-box node-child" rx="10" ry="10" width="116" height="34"></rect><text class="node-label" x="12" y="18">TileMap</text><text class="node-type" x="12" y="28">TileMapLayer</text></g>
+        <g class="node-hit" transform="translate(350,100)"><rect class="node-box node-child" rx="10" ry="10" width="120" height="34"></rect><text class="node-label" x="12" y="18">Camera2D</text><text class="node-type" x="12" y="28">Camera2D</text></g>
+      </svg>
+    `,
+    `
+      <svg class="node-diagram" viewBox="0 0 520 220" role="img" aria-label="Player diagram">
+        <rect width="520" height="220" fill="rgba(13,17,23,.18)"></rect>
+        <path class="node-link" d="M 260 54 C 260 76, 92 82, 92 100"></path>
+        <path class="node-link" d="M 260 54 C 260 76, 228 82, 228 100"></path>
+        <path class="node-link" d="M 260 54 C 260 76, 364 82, 364 100"></path>
+        <g class="node-hit" transform="translate(206,20)"><rect class="node-box node-root" rx="10" ry="10" width="108" height="34"></rect><text class="node-label" x="12" y="18">Player</text><text class="node-type" x="12" y="28">CharacterBody2D</text></g>
+        <g class="node-hit" transform="translate(40,100)"><rect class="node-box node-child" rx="10" ry="10" width="104" height="34"></rect><text class="node-label" x="12" y="18">Sprite</text><text class="node-type" x="12" y="28">AnimatedSprite2D</text></g>
+        <g class="node-hit" transform="translate(186,100)"><rect class="node-box node-child" rx="10" ry="10" width="90" height="34"></rect><text class="node-label" x="12" y="18">Body</text><text class="node-type" x="12" y="28">Collision</text></g>
+        <g class="node-hit" transform="translate(320,100)"><rect class="node-box node-child" rx="10" ry="10" width="108" height="34"></rect><text class="node-label" x="12" y="18">SFX</text><text class="node-type" x="12" y="28">AudioStreamPlayer2D</text></g>
+      </svg>
+    `,
+    `
+      <svg class="node-diagram" viewBox="0 0 520 220" role="img" aria-label="Lighting diagram">
+        <rect width="520" height="220" fill="rgba(13,17,23,.18)"></rect>
+        <path class="node-link" d="M 260 54 C 260 76, 104 82, 104 100"></path>
+        <path class="node-link" d="M 260 54 C 260 76, 260 82, 260 100"></path>
+        <path class="node-link" d="M 260 54 C 260 76, 404 82, 404 100"></path>
+        <g class="node-hit" transform="translate(206,20)"><rect class="node-box node-root" rx="10" ry="10" width="108" height="34"></rect><text class="node-label" x="12" y="18">World</text><text class="node-type" x="12" y="28">Node2D</text></g>
+        <g class="node-hit" transform="translate(50,100)"><rect class="node-box node-child" rx="10" ry="10" width="108" height="34"></rect><text class="node-label" x="12" y="18">CanvasModulate</text><text class="node-type" x="12" y="28">ambient</text></g>
+        <g class="node-hit" transform="translate(198,100)"><rect class="node-box node-child" rx="10" ry="10" width="124" height="34"></rect><text class="node-label" x="12" y="18">TorchLight</text><text class="node-type" x="12" y="28">PointLight2D</text></g>
+        <g class="node-hit" transform="translate(344,100)"><rect class="node-box node-child" rx="10" ry="10" width="112" height="34"></rect><text class="node-label" x="12" y="18">PlayerLight</text><text class="node-type" x="12" y="28">PointLight2D</text></g>
+      </svg>
+    `
+  ];
+
+  document.querySelectorAll('.node-tree').forEach((el, index) => {
+    if (diagrams[index]) el.innerHTML = diagrams[index];
+  });
+}
+
+function restoreChecklistState(state) {
+  const done = new Set((state && state.checks) || []);
+  document.querySelectorAll('.checklist li').forEach(li => {
+    const key = li.dataset.persistKey || li.textContent.trim();
+    if (done.has(key)) {
+      li.classList.add('done');
+      const cb = li.querySelector('.cb');
+      if (cb) cb.textContent = '✓';
+    }
+    li.dataset.persistKey = key;
+  });
+}
+
+function toggleCodeOnly(enabled) {
+  document.body.classList.toggle('code-only', enabled);
+  saveState();
+}
+
+function answer(el, correct) {
+  const opts = el.closest('.quiz-options').querySelectorAll('.quiz-opt');
+  opts.forEach(o => (o.style.pointerEvents = 'none'));
+  el.classList.add(correct ? 'correct' : 'wrong');
+
+  const fb = el.closest('.quiz').querySelector('.quiz-feedback');
+  fb.classList.add('show');
+  if (correct) {
+    fb.classList.add('ok');
+    fb.textContent = 'Correcto. ' + (QUIZZES[el.closest('.quiz').dataset.quiz]?.ok || '');
+  } else {
+    fb.classList.add('ko');
+    fb.textContent = 'No es correcto. ' + (QUIZZES[el.closest('.quiz').dataset.quiz]?.ko || '');
+    opts.forEach(o => {
+      if (o.getAttribute('onclick') && o.getAttribute('onclick').includes('true')) {
+        o.classList.add('correct');
+      }
+    });
+  }
+}
+
+function copyCode(btn) {
+  const pre = btn.closest('.code-block').querySelector('pre');
+  const text = pre.innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = '✓ Copiado';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = 'Copiar';
+      btn.classList.remove('copied');
+    }, 2000);
+  }).catch(() => {
+    btn.textContent = 'Error';
+    setTimeout(() => {
+      btn.textContent = 'Copiar';
+    }, 2000);
+  });
+}
+
+function toggleCheck(li) {
+  li.classList.toggle('done');
+  const cb = li.querySelector('.cb');
+  if (cb) cb.textContent = li.classList.contains('done') ? '✓' : '';
+  saveState();
+}
+
+function openSidebar() {
+  document.getElementById('sidebar').classList.add('open');
+  document.getElementById('overlay').classList.add('visible');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('visible');
+}
+
+function initSectionLabels() {
+  document.querySelectorAll('.section-header').forEach(header => {
+    if (!header.dataset.divider) {
+      const number = header.querySelector('.section-number');
+      header.dataset.divider = number ? `SECTION ${number.textContent.trim()}` : 'SECTION';
+    }
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  lastState = loadState();
+  if (lastState && Array.isArray(lastState.visited)) {
+    lastState.visited.forEach(v => visited.add(v));
+  }
+  if (lastState && typeof lastState.buildPhase === 'number') {
+    buildPhase = lastState.buildPhase;
+  }
+
+  document.querySelectorAll('.tree-section').forEach(ts => ts.classList.remove('open'));
+  const openSections = (lastState && lastState.openSections) || ['intro'];
+  openSections.forEach(key => {
+    const section = document.querySelector(`.tree-section[data-section="${key}"]`);
+    if (section) section.classList.add('open');
+  });
+  if (!openSections.length) {
+    document.querySelector('[data-section="intro"]')?.classList.add('open');
+  }
+
+  renderBuildSection();
+  replaceNodeDiagrams();
+  injectQuizzes();
+  initSectionLabels();
+  restoreChecklistState(lastState);
+
+  const codeOnly = !!(lastState && lastState.codeOnly);
+  const codeToggle = document.getElementById('code-only-toggle');
+  if (codeToggle) codeToggle.checked = codeOnly;
+  document.body.classList.toggle('code-only', codeOnly);
+
+  const startSection = (lastState && lastState.currentSection && PAGES[lastState.currentSection]) ? lastState.currentSection : 'intro';
+  const startPage = (lastState && lastState.currentPage) ? lastState.currentPage : 'El Entorno';
+  navigate(startSection, sectionTitles[startSection], startPage, { flash: false, skipSave: true, phase: buildPhase });
+  visited.clear();
+  if (lastState && Array.isArray(lastState.visited)) {
+    lastState.visited.forEach(v => visited.add(v));
+  } else {
+    visited.add('intro:El Entorno');
+  }
+  updateProgress();
+  saveState();
+});
+</script>
+</body>
+</html>
