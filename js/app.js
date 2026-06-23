@@ -579,8 +579,9 @@ function navigate(sectionKey, sectionTitle, pageName, options = {}) {
     setFlash();
   }
 
-  document.getElementById('main').scrollTo({ top: 0, behavior: 'auto' });
-  window.scrollTo({ top: 0, behavior: 'auto' });
+  if (sec) {
+    sec.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  }
   closeSidebar();
 
   visited.add(sectionKey + ':' + pageName);
