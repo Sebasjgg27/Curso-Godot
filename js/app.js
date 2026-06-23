@@ -889,44 +889,48 @@ function initSectionLabels() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  lastState = loadState();
-  if (lastState && Array.isArray(lastState.visited)) {
-    lastState.visited.forEach(v => visited.add(v));
-  }
-  if (lastState && typeof lastState.buildPhase === 'number') {
-    buildPhase = lastState.buildPhase;
-  }
+  try {
+    lastState = loadState();
+    if (lastState && Array.isArray(lastState.visited)) {
+      lastState.visited.forEach(v => visited.add(v));
+    }
+    if (lastState && typeof lastState.buildPhase === 'number') {
+      buildPhase = lastState.buildPhase;
+    }
 
-  document.querySelectorAll('.tree-section').forEach(ts => ts.classList.remove('open'));
-  const openSections = (lastState && lastState.openSections) || ['intro'];
-  openSections.forEach(key => {
-    const section = document.querySelector(`.tree-section[data-section="${key}"]`);
-    if (section) section.classList.add('open');
-  });
-  if (!openSections.length) {
-    document.querySelector('[data-section="intro"]')?.classList.add('open');
+    document.querySelectorAll('.tree-section').forEach(ts => ts.classList.remove('open'));
+    const openSections = (lastState && lastState.openSections) || ['intro'];
+    openSections.forEach(key => {
+      const section = document.querySelector(`.tree-section[data-section="${key}"]`);
+      if (section) section.classList.add('open');
+    });
+    if (!openSections.length) {
+      document.querySelector('[data-section="intro"]')?.classList.add('open');
+    }
+
+    renderBuildSection();
+    replaceNodeDiagrams();
+    injectQuizzes();
+    initSectionLabels();
+    restoreChecklistState(lastState);
+
+    const codeOnly = !!(lastState && lastState.codeOnly);
+    const codeToggle = document.getElementById('code-only-toggle');
+    if (codeToggle) codeToggle.checked = codeOnly;
+    document.body.classList.toggle('code-only', codeOnly);
+
+    const startSection = (lastState && lastState.currentSection && PAGES[lastState.currentSection]) ? lastState.currentSection : 'intro';
+    const startPage = (lastState && lastState.currentPage) ? lastState.currentPage : 'El Entorno';
+    navigate(startSection, sectionTitles[startSection], startPage, { flash: false, skipSave: true, phase: buildPhase });
+    visited.clear();
+    if (lastState && Array.isArray(lastState.visited)) {
+      lastState.visited.forEach(v => visited.add(v));
+    } else {
+      visited.add('intro:El Entorno');
+    }
+    updateProgress();
+    saveState();
+  } catch (e) {
+    console.error('Init error:', e);
   }
-
-  renderBuildSection();
-  replaceNodeDiagrams();
-  injectQuizzes();
-  initSectionLabels();
-  restoreChecklistState(lastState);
-
-  const codeOnly = !!(lastState && lastState.codeOnly);
-  const codeToggle = document.getElementById('code-only-toggle');
-  if (codeToggle) codeToggle.checked = codeOnly;
-  document.body.classList.toggle('code-only', codeOnly);
-
-  const startSection = (lastState && lastState.currentSection && PAGES[lastState.currentSection]) ? lastState.currentSection : 'intro';
-  const startPage = (lastState && lastState.currentPage) ? lastState.currentPage : 'El Entorno';
-  navigate(startSection, sectionTitles[startSection], startPage, { flash: false, skipSave: true, phase: buildPhase });
-  visited.clear();
-  if (lastState && Array.isArray(lastState.visited)) {
-    lastState.visited.forEach(v => visited.add(v));
-  } else {
-    visited.add('intro:El Entorno');
-  }
-  updateProgress();
-  saveState();
 });
