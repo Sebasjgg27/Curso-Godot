@@ -406,7 +406,14 @@ a:hover { color: var(--green); text-decoration: underline; }
   margin-bottom: 72px;
   display: none;
 }
-.section.active-section { display: block; }
+.section.active-section {
+  display: block;
+  animation: fadeSlideIn .28s ease forwards;
+}
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 .section-header {
   display: flex;
   align-items: flex-start;
@@ -1092,21 +1099,12 @@ body.code-only .content {
   inset: 0;
   pointer-events: none;
   z-index: 999;
+  background: var(--bg);
   opacity: 0;
-  background:
-    radial-gradient(circle at 50% 50%, rgba(255,255,255,.95), rgba(255,255,255,.5) 18%, transparent 28%),
-    linear-gradient(135deg, rgba(169,123,255,.38), rgba(126,202,76,.12));
-  mix-blend-mode: screen;
+  transition: opacity .15s ease;
 }
 body.flash-transition #flash-layer {
-  animation: brutalFlash .22s steps(2, end) 1;
-}
-@keyframes brutalFlash {
-  0%   { opacity: 0; transform: scale(.98); }
-  18%  { opacity: 1; }
-  35%  { opacity: .3; }
-  55%  { opacity: .92; transform: scale(1.01); }
-  100% { opacity: 0; transform: scale(1); }
+  opacity: .55;
 }
 
 /* ============================================================

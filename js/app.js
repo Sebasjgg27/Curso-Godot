@@ -502,10 +502,10 @@ function updateProgress() {
 }
 
 function setFlash() {
-  document.body.classList.remove('flash-transition');
-  void document.body.offsetWidth;
   document.body.classList.add('flash-transition');
-  window.setTimeout(() => document.body.classList.remove('flash-transition'), 220);
+  window.setTimeout(() => {
+    document.body.classList.remove('flash-transition');
+  }, 160);
 }
 
 function syncBuildPhase() {
