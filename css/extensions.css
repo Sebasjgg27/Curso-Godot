@@ -11,6 +11,34 @@
 }
 body.modal-open { overflow: hidden; }
 
+/* ---------- beginner "en palabras simples" box ---------- */
+.eli5 {
+  background: linear-gradient(180deg, rgba(126, 202, 76, .07), rgba(79, 195, 247, .05));
+  border: 1px solid var(--green-dim);
+  border-left: 3px solid var(--green);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin: 16px 0 20px;
+}
+.eli5-title {
+  font-family: var(--font-mono);
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--green);
+  letter-spacing: .02em;
+  margin-bottom: 8px;
+}
+.eli5 p { margin: 0 0 8px; }
+.eli5 p:last-child { margin-bottom: 0; }
+.eli5 .eli5-analogy {
+  font-size: .92rem;
+  color: var(--txt-dim);
+  border-top: 1px dashed var(--border);
+  padding-top: 8px;
+}
+.eli5 .eli5-analogy strong { color: var(--cyan); }
+.eli5 code, .eli5 .inline { color: var(--violet); }
+
 /* ---------- reading time badge ---------- */
 .reading-time {
   font-family: var(--font-mono);
