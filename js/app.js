@@ -4,7 +4,7 @@
 const STORAGE_KEY = 'gdscript-guide-state-v3';
 const PAGES = {
   study: {
-    pages: ['Cómo usar esta guía', 'Ruta de aprendizaje', 'Próximos pasos'],
+    pages: ['Cómo usar esta guía', 'Ruta de aprendizaje', 'Errores comunes', 'Próximos pasos'],
     title: 'Guía de Estudio'
   },
   intro: {

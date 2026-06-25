@@ -42,6 +42,9 @@
         <div class="tree-item" onclick="navigate('study','Guía de Estudio','Ruta de aprendizaje')">
           <span class="icon">🗺️</span>roadmap.md
         </div>
+        <div class="tree-item" onclick="navigate('study','Guía de Estudio','Errores comunes')">
+          <span class="icon">⚠️</span>common_mistakes.md
+        </div>
         <div class="tree-item" onclick="navigate('study','Guía de Estudio','Próximos pasos')">
           <span class="icon">🚀</span>next_steps.md
         </div>
@@ -496,6 +499,95 @@
 
         <nav class="nav-footer" data-section="study">
           <button class="nav-btn" onclick="navigate('study','Guía de Estudio','Cómo usar esta guía')">← Anterior: Metodología</button>
+          <button class="nav-btn right" onclick="navigate('study','Guía de Estudio','Errores comunes')">Siguiente: Errores comunes →</button>
+        </nav>
+      </div>
+
+      <!-- Errores comunes -->
+      <div id="page-Errores comunes" style="display:none">
+        <div class="section-header">
+          <span class="section-number">★</span>
+          <h2><span class="dim">//</span> Errores comunes de principiantes</h2>
+        </div>
+
+        <p>Estos son los errores más frecuentes al aprender Godot 4 y GDScript. Reconocerlos te ahorrará horas de debugging.</p>
+
+        <h3>⚠️ 1. No multiplicar por delta</h3>
+        <p>El error más común. Si mueves un objeto sin usar <code>delta</code>, el movimiento será diferente en cada pantalla (60 fps vs 144 fps).</p>
+        <div class="code-block">
+          <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">mal.gd</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+          <pre><code><span class="cm"># ❌ MAL: el movimiento depende de los fps</span>
+<span class="kw">func</span> <span class="fn">_process</span>(<span class="var">delta</span>):  <span class="cm"># También debería ser _physics_process</span>
+    <span class="var">position</span>.x += <span class="num">5</span>
+
+<span class="cm"># ✅ BIEN: frame-rate independiente</span>
+<span class="kw">func</span> <span class="fn">_physics_process</span>(<span class="var">delta</span>: <span class="cls">float</span>) -> <span class="kw">void</span>:
+    <span class="var">position</span>.x += <span class="num">200</span> * <span class="var">delta</span></code></pre>
+        </div>
+
+        <h3>⚠️ 2. Usar get_node() con rutas quemadas</h3>
+        <p>Llamar <code>$Nodo</code> cada frame es ineficiente. Además, si renombras el nodo, el código se rompe.</p>
+        <div class="code-block">
+          <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">mal.gd</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+          <pre><code><span class="cm"># ❌ MAL: get_node cada frame + ruta quemada</span>
+<span class="kw">func</span> <span class="fn">_process</span>(<span class="var">delta</span>):
+    <span class="kw">var</span> <span class="var">sprite</span> = $Sprite2D
+    <span class="var">sprite</span>.modulate = <span class="cls">Color</span>(<span class="num">1</span>, <span class="num">0</span>, <span class="num">0</span>)
+
+<span class="cm"># ✅ BIEN: @onready cachea la referencia</span>
+<span class="nd">@onready</span> <span class="kw">var</span> <span class="var">sprite</span>: <span class="cls">Sprite2D</span> = $Sprite2D</code></pre>
+        </div>
+
+        <h3>⚠️ 3. No desconectar señales</h3>
+        <p>Si conectas una señal en código pero no la desconectas al salir de la escena, obtienes errores de "null instance" o comportamientos duplicados.</p>
+        <div class="code-block">
+          <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">mal.gd</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+          <pre><code><span class="cm"># ❌ MAL: señal nunca se desconecta</span>
+<span class="kw">func</span> <span class="fn">_ready</span>() -> <span class="kw">void</span>:
+    <span class="var">enemy</span>.hit.<span class="kw">connect</span>(<span class="var">_on_enemy_hit</span>)
+
+<span class="cm"># ✅ BIEN: desconectar en _exit_tree</span>
+<span class="kw">func</span> <span class="fn">_ready</span>() -> <span class="kw">void</span>:
+    <span class="var">enemy</span>.hit.<span class="kw">connect</span>(<span class="var">_on_enemy_hit</span>)
+<span class="kw">func</span> <span class="fn">_exit_tree</span>() -> <span class="kw">void</span>:
+    <span class="var">enemy</span>.hit.disconnect(<span class="var">_on_enemy_hit</span>)</code></pre>
+        </div>
+
+        <h3>⚠️ 4. Un solo script gigante</h3>
+        <p>Poner toda la lógica del juego en un solo archivo hace que el código sea imposible de mantener. Godot está diseñado para composición de nodos.</p>
+        <div class="tip"><strong>Regla práctica:</strong> Si un script supera las 200-300 líneas, dividí su comportamiento en nodos hijos especializados (HealthComponent, MovementController, etc.).</div>
+
+        <h3>⚠️ 5. No usar tipos (type hints)</h3>
+        <p>GDScript 2.0 soporta tipado estático opcional. No usarlo significa perder autocompletado, detección de errores en tiempo de compilación y rendimiento.</p>
+        <div class="code-block">
+          <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">mal.gd</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+          <pre><code><span class="cm"># ❌ MAL: sin tipos</span>
+<span class="kw">func</span> <span class="fn">take_damage</span>(<span class="var">amount</span>, <span class="var">source</span>):
+    <span class="kw">return</span> <span class="var">hp</span> - <span class="var">amount</span>
+
+<span class="cm"># ✅ BIEN: con tipos</span>
+<span class="kw">func</span> <span class="fn">take_damage</span>(<span class="var">amount</span>: <span class="cls">int</span>, <span class="var">source</span>: <span class="cls">Node</span>) -> <span class="cls">int</span>:
+    <span class="kw">return</span> <span class="var">hp</span> - <span class="var">amount</span></code></pre>
+        </div>
+
+        <h3>📌 Resumen rápido</h3>
+        <table>
+          <thead><tr><th>Error</th><th>Solución</th></tr></thead>
+          <tbody>
+            <tr><td>No multiplicar por delta</td><td>Siempre <code>movimiento * delta</code></td></tr>
+            <tr><td>get_node() cada frame</td><td>Usar <code>@onready var</code></td></tr>
+            <tr><td>Señales sin desconectar</td><td>Desconectar en <code>_exit_tree()</code></td></tr>
+            <tr><td>Scripts monolíticos</td><td>Composición de nodos</td></tr>
+            <tr><td>Sin type hints</td><td>Siempre tipar variables y funciones</td></tr>
+            <tr><td><code>_process</code> para movimiento</td><td>Usar <code>_physics_process</code></td></tr>
+            <tr><td>Olvidar <code>move_and_slide()</code></td><td>Llamarlo después de setear <code>velocity</code></td></tr>
+          </tbody>
+        </table>
+
+        <div class="tip"><strong>💡 Tip:</strong> Activá las advertencias <code>UNTYPED_DECLARATION</code> y <code>UNSAFE_PROPERTY_ACCESS</code> en Project Settings de Godot para que el editor te marque automáticamente el código sin tipar.</div>
+
+        <nav class="nav-footer" data-section="study">
+          <button class="nav-btn" onclick="navigate('study','Guía de Estudio','Ruta de aprendizaje')">← Anterior: Ruta de aprendizaje</button>
           <button class="nav-btn right" onclick="navigate('study','Guía de Estudio','Próximos pasos')">Siguiente: Próximos pasos →</button>
         </nav>
       </div>
@@ -591,7 +683,7 @@
         <div class="tip"><strong>💪 El viaje continúa:</strong> Aprender Godot es un proceso continuo. La mejor forma de mejorar es <strong>construir</strong>. Empieza pequeño, termina proyectos, comparte tu trabajo. ¡El próximo gran juego indie puede ser el tuyo!</div>
 
         <nav class="nav-footer" data-section="study">
-          <button class="nav-btn" onclick="navigate('study','Guía de Estudio','Ruta de aprendizaje')">← Anterior: Ruta de aprendizaje</button>
+          <button class="nav-btn" onclick="navigate('study','Guía de Estudio','Errores comunes')">← Anterior: Errores comunes</button>
           <button class="nav-btn right" onclick="navigate('intro','Introducción','El Entorno')">Comenzar curso →</button>
         </nav>
       </div>
