@@ -1,101 +1,98 @@
-# Godot Interactive Guide 🇪🇸
+# Godot Interactive Guide
 
-**Una guía interactiva de Godot 4 / GDScript** — construida como una SPA (Single Page Application) 100% estática, con temática tipo terminal, secciones estilo curso, ejercicios integrados y más.
+**An interactive, hands-on guide to building a complete 2D Metroidvania in Godot 4 with GDScript.**
+Built as a 100% static single-page app (no frameworks, no build step), with a terminal-style UI, course-like sections, per-section quizzes, beginner explainers, global search, and a 9-phase build blueprint.
 
-> 🌐 **Live:** [Sebasjgg27.github.io/godot-interactive-guide](https://Sebasjgg27.github.io/godot-interactive-guide)
+> 🌐 **Live:** https://sebasjgg27.github.io/godot-interactive-guide
+> 🌍 **Languages:** English (default) · Español (toggle in the toolbar)
+> 📄 **License:** MIT
 
 ---
 
-## 🎯 ¿Qué es?
+## 🎯 Scope — this is a **2D-focused** guide
 
-Godot Interactive Guide es un recurso de aprendizaje **gratuito, offline-friendly** que cubre desde los fundamentos de Godot 4 hasta conceptos avanzados como shaders, autoloads, señales personalizadas y exportación multiplataforma.
+This guide is intentionally about **2D game development with Godot 4**. Everything is oriented toward shipping a real 2D action‑platformer (Metroidvania):
 
-Todo el contenido está en español y está diseñado para ser leído de principio a fin, o usado como referencia rápida.
+- GDScript fundamentals (variables, functions, control flow, collections, OOP)
+- The node/scene model and signals
+- `CharacterBody2D` platforming, input, animation and `Camera2D`
+- Rooms, `TileMapLayer`, abilities, enemy AI and room transitions
+- Pixel-art pipeline: import settings, `AnimatedSprite2D`, 2D lights and 2D shaders
+- Game systems: save/load, HUD, audio and autoloads
 
-## ✨ Características
+> **Out of scope:** 3D rendering, 3D physics and 3D-specific workflows. The concepts (nodes, signals, GDScript, autoloads) transfer to 3D, but every example here targets 2D.
 
-| Característica | Descripción |
-|---|---|
-| 📚 **Secciones progresivas** | De "Introducción" a "Publicación", cada sección tiene páginas numeradas. |
-| 🎮 **Ejercicios integrados** | Preguntas interactivas al final de cada sección para reforzar lo aprendido. |
-| 🏗️ **Plan de construcción** | 5 fases para desarrollar un Metroidvania 2D desde cero. |
-| ⭐ **Guía de estudio** | Metodología, ruta de aprendizaje, errores comunes y próximos pasos. |
-| 🔗 **Vínculos a recursos** | Documentación oficial, GDQuest, Asset Library, plantillas y más. |
-| 🌙 **Tema oscuro** | Interfaz tipo terminal con alta legibilidad. |
+**Target audience:** beginners with little or no programming background, up to intermediate developers who want a structured 2D project blueprint. Every concept page opens with a plain-language *"In simple words"* explainer and an everyday analogy.
 
-## 📑 Contenido
+---
 
-1. **Introducción** — Qué es Godot, instalación, el editor.
-2. **GDScript** — Sintaxis básica, variables, funciones, tipos, señales.
-3. **Nodos y Escenas** — Árbol de escenas, herencia, instanciación.
-4. **Físicas** — CharacterBody2D, Area2D, colisiones, capas.
-5. **Interfaz** — Control, contenedores, temas, señales de UI.
-6. **Animación** — AnimationPlayer, AnimationTree, blend trees.
-7. **Audio** — AudioStreamPlayer, buses, efectos, reproducción 2D/3D.
-8. **Persistencia** — ConfigFile, Resource, guardado/carga.
-9. **Shaders** — Shaders visuales, parámetros, tiempo.
-10. **Plugins** — EditorPlugin, InspectorPlugin, autoloads.
-11. **Publicación** — Exportación, plataformas, optimización.
-12. **🏗️ Plan de Construcción** — 5 fases para tu Metroidvania.
-13. **★ Guía de Estudio** — Cómo usar esta guía, ruta de aprendizaje, errores comunes, próximos pasos.
+## 📚 Course structure (9 sections + study guide)
 
-## 🛠️ Stack técnico
+| # | Section | Level | What you build |
+|---|---------|-------|----------------|
+| ★ | **Study Guide** | — | Methodology, learning path, common mistakes, next steps |
+| 00 | **Introduction** | 🟢 | What Godot is, install, the editor |
+| 01 | **GDScript Basics** | 🟢 | Variables, functions, control flow, arrays/dictionaries, OOP |
+| 02 | **Nodes & Scenes** | 🟢 | Scene tree, signals, groups, instancing |
+| 03 | **2D Player** | 🟡 | `CharacterBody2D`, input map, animation, camera |
+| 04 | **Metroidvania** | 🔴 | Rooms, `TileMapLayer`, abilities, enemy AI, transitions |
+| 05 | **Pixel Art** | 🟡 | Project config, `AnimatedSprite2D`, 2D lights, 2D shaders |
+| 06 | **Systems** | 🟡 | Save/Load, HUD, audio, autoloads |
+| 07 | **Reference** | 🟢 | Cheat sheet, common patterns, external resources |
+| 08 | **Build the Game** | 🔴 | A 9-phase blueprint (0–8) to assemble and export your game |
 
-- **HTML5** + **CSS3** (variables, animaciones, flexbox)
-- **JavaScript** vanilla (sin frameworks, sin dependencias)
-- **Google Fonts** (JetBrains Mono + Inter)
-- Sin build tools, sin bundlers, sin npm
+## ✨ Features
 
-## 🚀 Uso local
+- **Beginner-first explainers** — every technical page starts with a plain-language box + analogy.
+- **Per-section quizzes** with instant feedback.
+- **Global search** (`Ctrl/Cmd+K` or `/`) indexing every page and concept.
+- **Keyboard navigation** — `←`/`→` between pages, `Esc`, `?` help, `T` table of contents.
+- **Auto table of contents** and **reading-time** estimate per page.
+- **Code-Only mode** to strip prose and read just the code.
+- **9-phase build blueprint** with node diagrams, file timelines and testing checkpoints.
+- **Progress saved** in `localStorage`.
+- **Accessibility** — keyboard-operable tree/quizzes, focus-visible, ARIA live regions.
+- **Terminal/brutalist dark theme.**
+
+## 🛠️ Tech stack
+
+Vanilla **HTML5 + CSS3 + JavaScript** — no frameworks, no bundler, no npm.
+
+```
+index.html            # all page content
+css/style.css         # base theme
+css/extensions.css    # search, toolbar, TOC, beginner boxes, i18n
+js/app.js             # navigation, state, quizzes, build phases (data inline)
+js/extensions.js      # search, shortcuts, TOC, reading time, a11y, language toggle
+```
+
+## 🚀 Run locally
 
 ```bash
-# Clonar
 git clone https://github.com/Sebasjgg27/godot-interactive-guide.git
-
-# Abrir (no necesita servidor)
-open godot-interactive-guide/index.html
+cd godot-interactive-guide
+python3 -m http.server 8080   # then open http://localhost:8080
 ```
 
-O simplemente servilo con cualquier servidor HTTP estático:
+(Opening `index.html` directly also works, since there is no build step.)
 
-```bash
-python3 -m http.server 8080
-# o
-npx serve .
-```
+## 🤝 Contributing
 
-## 🤝 Contribuir
+PRs welcome — fixes, new 2D content, examples, diagrams or translations.
 
-¡Toda contribución es bienvenida! Ya sea corrigiendo un typo, agregando contenido, mejorando el diseño o traduciendo secciones.
-
-### Cómo contribuir
-
-1. Hacé un fork del repositorio.
-2. Cread una rama para tu cambio (`git checkout -b mejora/contenido`).
-3. Hacé tus cambios y commiteá (`git commit -m "Agrega sección de partículas"`).
-4. Push a tu fork (`git push origin mejora/contenido`).
-5. Abrí un Pull Request.
-
-### Guías
-
-- **Contenido nuevo**: Agregá un nuevo `<div id="page-Tu página">` en `index.html` y añadí la página al array en `PAGES` dentro de `js/app.js`.
-- **Estilos**: Todos los estilos están en `css/style.css`. Usá las variables CSS existentes para mantener consistencia.
-- **JavaScript**: Toda la lógica está en `js/app.js`. Las funciones de navegación, quizzes y blueprints están modularizadas por sección.
-- **Traducciones**: Si querés traducir secciones a otro idioma, abrí un issue primero para coordinar.
-
-### Ideas para contribuir
-
-- [ ] Agregar más ejercicios interactivos (arrastrar y soltar, completar código)
-- [ ] Traducir secciones a inglés
-- [ ] Agregar ejemplos visuales (capturas, diagramas)
-- [ ] Soporte para modo claro
-- [ ] Barra de búsqueda
-- [ ] Progreso de lectura (localStorage)
-
-## 📄 Licencia
-
-MIT — hacé lo que quieras con este proyecto. Si te sirvió, regalale una ⭐ al repo.
+- **New content:** add a `<div id="page-Your Page">` in `index.html` and register the page in `PAGES` in `js/app.js`.
+- **Styles:** reuse the existing CSS variables in `css/style.css` / `css/extensions.css`.
+- **Logic:** navigation, quizzes and the build blueprint live in `js/app.js`; UX features in `js/extensions.js`.
+- Keep examples **2D and Godot 4.3+** (the content uses `TileMapLayer`).
 
 ---
 
-Hecho con ❤️ para la comunidad hispanohablante de Godot.
+## 🇪🇸 Resumen en español
+
+Guía interactiva para construir un **Metroidvania 2D completo en Godot 4** con GDScript. Está **enfocada en desarrollo 2D** (no cubre 3D): fundamentos de GDScript, nodos y señales, `CharacterBody2D`, tilemaps, pixel art, luces y shaders 2D, y sistemas (guardado, HUD, audio, autoloads), más un blueprint de 9 fases para armar y exportar tu juego.
+
+La página está en **inglés por defecto** con un **interruptor a español** en la barra de herramientas. Cada página técnica abre con un recuadro *"En palabras simples"* pensado para quien no sabe nada de programación.
+
+---
+
+Made for the Godot community. If it helped you, drop a ⭐.
