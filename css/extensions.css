@@ -91,6 +91,14 @@ body.modal-open { overflow: hidden; }
 }
 .fab-top { background: var(--bg-card); }
 
+.fab-lang {
+  font-family: var(--font-mono);
+  font-size: .72rem;
+  font-weight: 600;
+  letter-spacing: .03em;
+}
+
+
 /* ============================================================
    COMMAND PALETTE
    ============================================================ */
