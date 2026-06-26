@@ -6,7 +6,8 @@
 <title>GDScript & Godot 4 — Guía Metroidvania 2D</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=2">
+<link rel="stylesheet" href="css/style.css?v=4">
+<link rel="stylesheet" href="css/extensions.css?v=4">
 </head>
 <body>
 
@@ -41,6 +42,9 @@
         </div>
         <div class="tree-item" onclick="navigate('study','Guía de Estudio','Ruta de aprendizaje')">
           <span class="icon">🗺️</span>roadmap.md
+        </div>
+        <div class="tree-item" onclick="navigate('study','Guía de Estudio','Errores comunes')">
+          <span class="icon">⚠️</span>common_mistakes.md
         </div>
         <div class="tree-item" onclick="navigate('study','Guía de Estudio','Próximos pasos')">
           <span class="icon">🚀</span>next_steps.md
@@ -496,6 +500,95 @@
 
         <nav class="nav-footer" data-section="study">
           <button class="nav-btn" onclick="navigate('study','Guía de Estudio','Cómo usar esta guía')">← Anterior: Metodología</button>
+          <button class="nav-btn right" onclick="navigate('study','Guía de Estudio','Errores comunes')">Siguiente: Errores comunes →</button>
+        </nav>
+      </div>
+
+      <!-- Errores comunes -->
+      <div id="page-Errores comunes" style="display:none">
+        <div class="section-header">
+          <span class="section-number">★</span>
+          <h2><span class="dim">//</span> Errores comunes de principiantes</h2>
+        </div>
+
+        <p>Estos son los errores más frecuentes al aprender Godot 4 y GDScript. Reconocerlos te ahorrará horas de debugging.</p>
+
+        <h3>⚠️ 1. No multiplicar por delta</h3>
+        <p>El error más común. Si mueves un objeto sin usar <code>delta</code>, el movimiento será diferente en cada pantalla (60 fps vs 144 fps).</p>
+        <div class="code-block">
+          <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">mal.gd</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+          <pre><code><span class="cm"># ❌ MAL: el movimiento depende de los fps</span>
+<span class="kw">func</span> <span class="fn">_process</span>(<span class="var">delta</span>):  <span class="cm"># También debería ser _physics_process</span>
+    <span class="var">position</span>.x += <span class="num">5</span>
+
+<span class="cm"># ✅ BIEN: frame-rate independiente</span>
+<span class="kw">func</span> <span class="fn">_physics_process</span>(<span class="var">delta</span>: <span class="cls">float</span>) -> <span class="kw">void</span>:
+    <span class="var">position</span>.x += <span class="num">200</span> * <span class="var">delta</span></code></pre>
+        </div>
+
+        <h3>⚠️ 2. Usar get_node() con rutas quemadas</h3>
+        <p>Llamar <code>$Nodo</code> cada frame es ineficiente. Además, si renombras el nodo, el código se rompe.</p>
+        <div class="code-block">
+          <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">mal.gd</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+          <pre><code><span class="cm"># ❌ MAL: get_node cada frame + ruta quemada</span>
+<span class="kw">func</span> <span class="fn">_process</span>(<span class="var">delta</span>):
+    <span class="kw">var</span> <span class="var">sprite</span> = $Sprite2D
+    <span class="var">sprite</span>.modulate = <span class="cls">Color</span>(<span class="num">1</span>, <span class="num">0</span>, <span class="num">0</span>)
+
+<span class="cm"># ✅ BIEN: @onready cachea la referencia</span>
+<span class="nd">@onready</span> <span class="kw">var</span> <span class="var">sprite</span>: <span class="cls">Sprite2D</span> = $Sprite2D</code></pre>
+        </div>
+
+        <h3>⚠️ 3. No desconectar señales</h3>
+        <p>Si conectas una señal en código pero no la desconectas al salir de la escena, obtienes errores de "null instance" o comportamientos duplicados.</p>
+        <div class="code-block">
+          <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">mal.gd</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+          <pre><code><span class="cm"># ❌ MAL: señal nunca se desconecta</span>
+<span class="kw">func</span> <span class="fn">_ready</span>() -> <span class="kw">void</span>:
+    <span class="var">enemy</span>.hit.<span class="kw">connect</span>(<span class="var">_on_enemy_hit</span>)
+
+<span class="cm"># ✅ BIEN: desconectar en _exit_tree</span>
+<span class="kw">func</span> <span class="fn">_ready</span>() -> <span class="kw">void</span>:
+    <span class="var">enemy</span>.hit.<span class="kw">connect</span>(<span class="var">_on_enemy_hit</span>)
+<span class="kw">func</span> <span class="fn">_exit_tree</span>() -> <span class="kw">void</span>:
+    <span class="var">enemy</span>.hit.disconnect(<span class="var">_on_enemy_hit</span>)</code></pre>
+        </div>
+
+        <h3>⚠️ 4. Un solo script gigante</h3>
+        <p>Poner toda la lógica del juego en un solo archivo hace que el código sea imposible de mantener. Godot está diseñado para composición de nodos.</p>
+        <div class="tip"><strong>Regla práctica:</strong> Si un script supera las 200-300 líneas, dividí su comportamiento en nodos hijos especializados (HealthComponent, MovementController, etc.).</div>
+
+        <h3>⚠️ 5. No usar tipos (type hints)</h3>
+        <p>GDScript 2.0 soporta tipado estático opcional. No usarlo significa perder autocompletado, detección de errores en tiempo de compilación y rendimiento.</p>
+        <div class="code-block">
+          <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">mal.gd</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+          <pre><code><span class="cm"># ❌ MAL: sin tipos</span>
+<span class="kw">func</span> <span class="fn">take_damage</span>(<span class="var">amount</span>, <span class="var">source</span>):
+    <span class="kw">return</span> <span class="var">hp</span> - <span class="var">amount</span>
+
+<span class="cm"># ✅ BIEN: con tipos</span>
+<span class="kw">func</span> <span class="fn">take_damage</span>(<span class="var">amount</span>: <span class="cls">int</span>, <span class="var">source</span>: <span class="cls">Node</span>) -> <span class="cls">int</span>:
+    <span class="kw">return</span> <span class="var">hp</span> - <span class="var">amount</span></code></pre>
+        </div>
+
+        <h3>📌 Resumen rápido</h3>
+        <table>
+          <thead><tr><th>Error</th><th>Solución</th></tr></thead>
+          <tbody>
+            <tr><td>No multiplicar por delta</td><td>Siempre <code>movimiento * delta</code></td></tr>
+            <tr><td>get_node() cada frame</td><td>Usar <code>@onready var</code></td></tr>
+            <tr><td>Señales sin desconectar</td><td>Desconectar en <code>_exit_tree()</code></td></tr>
+            <tr><td>Scripts monolíticos</td><td>Composición de nodos</td></tr>
+            <tr><td>Sin type hints</td><td>Siempre tipar variables y funciones</td></tr>
+            <tr><td><code>_process</code> para movimiento</td><td>Usar <code>_physics_process</code></td></tr>
+            <tr><td>Olvidar <code>move_and_slide()</code></td><td>Llamarlo después de setear <code>velocity</code></td></tr>
+          </tbody>
+        </table>
+
+        <div class="tip"><strong>💡 Tip:</strong> Activá las advertencias <code>UNTYPED_DECLARATION</code> y <code>UNSAFE_PROPERTY_ACCESS</code> en Project Settings de Godot para que el editor te marque automáticamente el código sin tipar.</div>
+
+        <nav class="nav-footer" data-section="study">
+          <button class="nav-btn" onclick="navigate('study','Guía de Estudio','Ruta de aprendizaje')">← Anterior: Ruta de aprendizaje</button>
           <button class="nav-btn right" onclick="navigate('study','Guía de Estudio','Próximos pasos')">Siguiente: Próximos pasos →</button>
         </nav>
       </div>
@@ -591,7 +684,7 @@
         <div class="tip"><strong>💪 El viaje continúa:</strong> Aprender Godot es un proceso continuo. La mejor forma de mejorar es <strong>construir</strong>. Empieza pequeño, termina proyectos, comparte tu trabajo. ¡El próximo gran juego indie puede ser el tuyo!</div>
 
         <nav class="nav-footer" data-section="study">
-          <button class="nav-btn" onclick="navigate('study','Guía de Estudio','Ruta de aprendizaje')">← Anterior: Ruta de aprendizaje</button>
+          <button class="nav-btn" onclick="navigate('study','Guía de Estudio','Errores comunes')">← Anterior: Errores comunes</button>
           <button class="nav-btn right" onclick="navigate('intro','Introducción','El Entorno')">Comenzar curso →</button>
         </nav>
       </div>
@@ -611,6 +704,12 @@
             <div class="section-title">Bienvenida <span class="dim">// El entorno Godot</span></div>
           </div>
         </div>
+        <div class="eli5">
+        <div class="eli5-title">🔰 En palabras simples</div>
+        <p>Un <strong>motor de videojuegos</strong> es un programa que ya trae resueltas las partes difíciles de hacer un juego: dibujar imágenes en pantalla, detectar choques, reproducir sonidos y aplicar física. Godot es uno de esos motores, gratis y libre. En vez de programar todo desde cero, armás tu juego combinando piezas (los <strong>nodos</strong>) y escribiendo pequeñas instrucciones en <strong>GDScript</strong>, un lenguaje pensado para leerse fácil. No necesitás experiencia previa en videojuegos para empezar.</p>
+        <p class="eli5-analogy"><strong>Analogía:</strong> pensá en Godot como una cocina ya equipada: el horno, los cuchillos y las ollas están. Vos ponés la receta (tu código) y los ingredientes (imágenes y sonidos).</p>
+        </div>
+
         <p>
           Godot 4 es un motor de videojuegos open source con un lenguaje propio llamado <strong>GDScript</strong>, diseñado para ser legible, rápido y muy integrado con el editor. Su sintaxis es similar a Python pero con tipos opcionales y acceso directo al engine.
         </p>
@@ -659,6 +758,13 @@
           <span class="section-number">00</span>
           <div><div class="section-title">Instalación <span class="dim">// Setup del proyecto</span></div></div>
         </div>
+        <div class="eli5">
+        <div class="eli5-title">🔰 En palabras simples</div>
+        <p>Instalar Godot es más simple que la mayoría de programas: no hay instalador, descargás <strong>un solo archivo</strong> y lo abrís. Lo primero que vas a hacer es crear un <strong>proyecto</strong>, que no es más que la carpeta donde vivirá tu juego. Todo lo que crees se guarda ahí adentro.</p>
+        <p>⚠️ Elegí una ruta <strong>sin espacios ni tildes</strong> (por ejemplo <code class="inline">C:/godot/mi_juego</code>): algunos sistemas se confunden con caracteres raros en la ruta.</p>
+        <p class="eli5-analogy"><strong>Analogía:</strong> crear un proyecto es como abrir una carpeta nueva en blanco para un trabajo: todavía no hay nada, pero es el lugar donde irás poniendo todo.</p>
+        </div>
+
         <h2>Descarga e instalación</h2>
         <p>Godot 4 no requiere instalación. Es un ejecutable portátil. Descárgalo desde <strong>godotengine.org</strong>. Elige la versión <strong>estándar</strong> (no .NET salvo que necesites C#).</p>
         <div class="checklist">
@@ -697,6 +803,12 @@ stretch_aspect  = <span class="str">"keep"</span></code></pre>
           <span class="section-number">00</span>
           <div><div class="section-title">El Editor <span class="dim">// Zonas clave</span></div></div>
         </div>
+        <div class="eli5">
+        <div class="eli5-title">🔰 En palabras simples</div>
+        <p>El <strong>editor</strong> es la ventana de Godot donde construís el juego. Está dividido en <strong>zonas</strong>, cada una con un trabajo: una muestra las piezas de tu escena, otra sus propiedades, otra el código, otra los archivos. Al principio parece mucho, pero en la práctica usás siempre las mismas tres o cuatro.</p>
+        <p class="eli5-analogy"><strong>Analogía:</strong> como el tablero de un auto: hay muchos botones, pero manejás con el volante, los pedales y la palanca. El resto lo descubrís con el tiempo.</p>
+        </div>
+
         <h2>Zonas del editor Godot</h2>
         <table class="data-table">
           <thead><tr><th>Zona</th><th>Descripción</th><th>Shortcut</th></tr></thead>
@@ -745,6 +857,12 @@ stretch_aspect  = <span class="str">"keep"</span></code></pre>
           <span class="section-number">01</span>
           <div><div class="section-title">GDScript <span class="dim">// Variables y Tipos</span></div></div>
         </div>
+        <div class="eli5">
+        <div class="eli5-title">🔰 En palabras simples</div>
+        <p>Una <strong>variable</strong> es una caja con nombre donde guardás un dato para usarlo después: la vida del jugador, su velocidad, si está vivo. El <strong>tipo</strong> indica qué clase de dato entra en esa caja: un número entero (<code class="inline">int</code>), uno con decimales (<code class="inline">float</code>), texto (<code class="inline">String</code>) o verdadero/falso (<code class="inline">bool</code>). Decir el tipo es opcional, pero ayuda a Godot a avisarte si te equivocás.</p>
+        <p class="eli5-analogy"><strong>Analogía:</strong> una variable es un casillero etiquetado: 'vida' guarda 100, 'nombre' guarda "Link". El tipo es el cartel que dice qué se puede meter adentro.</p>
+        </div>
+
         <div class="code-block">
           <div class="code-block-header">
             <span class="lang">GDScript</span>
@@ -798,6 +916,12 @@ stretch_aspect  = <span class="str">"keep"</span></code></pre>
           <span class="section-number">01</span>
           <div><div class="section-title">GDScript <span class="dim">// Funciones</span></div></div>
         </div>
+        <div class="eli5">
+        <div class="eli5-title">🔰 En palabras simples</div>
+        <p>Una <strong>función</strong> es un bloque de instrucciones con nombre que ejecutás cuando querés. En vez de repetir las mismas líneas una y otra vez, las metés en una función y la “llamás” por su nombre. Godot, además, llama solo a ciertas funciones especiales en momentos clave: <code class="inline">_ready()</code> al empezar y <code class="inline">_process()</code> en cada cuadro del juego.</p>
+        <p class="eli5-analogy"><strong>Analogía:</strong> una función es como el botón “picar” de la licuadora: lo apretás y se hace todo el proceso por vos, sin tener que explicar cada paso cada vez.</p>
+        </div>
+
         <div class="code-block">
           <div class="code-block-header">
             <span class="lang">GDScript</span>
@@ -849,6 +973,12 @@ stretch_aspect  = <span class="str">"keep"</span></code></pre>
           <span class="section-number">01</span>
           <div><div class="section-title">GDScript <span class="dim">// Control de Flujo</span></div></div>
         </div>
+        <div class="eli5">
+        <div class="eli5-title">🔰 En palabras simples</div>
+        <p>El <strong>control de flujo</strong> hace que tu juego decida y repita. “Si la vida llega a 0, morí” es una decisión (<code class="inline">if</code>). “Repetí esto para cada enemigo” es un bucle (<code class="inline">for</code>). Sin esto, el código correría de arriba a abajo una sola vez; con esto, reacciona a lo que pasa y puede repetir tareas.</p>
+        <p class="eli5-analogy"><strong>Analogía:</strong> es como las indicaciones de un GPS: “si hay tráfico, doblá”, “seguí derecho hasta el tercer semáforo”. El programa elige el camino según la situación.</p>
+        </div>
+
         <div class="code-block">
           <div class="code-block-header">
             <span class="lang">GDScript</span>
@@ -896,6 +1026,12 @@ stretch_aspect  = <span class="str">"keep"</span></code></pre>
           <span class="section-number">01</span>
           <div><div class="section-title">GDScript <span class="dim">// Colecciones</span></div></div>
         </div>
+        <div class="eli5">
+        <div class="eli5-title">🔰 En palabras simples</div>
+        <p>A veces no querés guardar un solo dato sino una colección. Un <strong>Array</strong> es una lista ordenada (elemento 0, 1, 2…), ideal para un inventario. Un <strong>Diccionario</strong> guarda pares <em>clave: valor</em>, como una agenda: buscás por un nombre y obtenés su dato (<code class="inline">"vida" → 100</code>).</p>
+        <p class="eli5-analogy"><strong>Analogía:</strong> el Array es una fila de casilleros numerados; el Diccionario es una agenda donde buscás por nombre, no por número.</p>
+        </div>
+
         <div class="code-block">
           <div class="code-block-header">
             <span class="lang">GDScript</span>
@@ -939,6 +1075,12 @@ print(<span class="var">stats</span>.get(<span class="str">"vida"</span>, <span 
           <span class="section-number">01</span>
           <div><div class="section-title">GDScript <span class="dim">// Clases y POO</span></div></div>
         </div>
+        <div class="eli5">
+        <div class="eli5-title">🔰 En palabras simples</div>
+        <p>Una <strong>clase</strong> es un molde para crear cosas que comparten características. Definís una vez qué es un “Enemigo” (tiene vida, se mueve, ataca) y luego creás muchos enemigos a partir de ese molde. La <strong>herencia</strong> te deja partir de un molde y agregarle cosas: un “Jefe” es un Enemigo con más vida y un ataque extra. (POO = Programación Orientada a Objetos.)</p>
+        <p class="eli5-analogy"><strong>Analogía:</strong> la clase es el molde de galletas; cada galleta que sale es un objeto. Todas tienen la misma forma, pero podés decorarlas distinto.</p>
+        </div>
+
         <div class="code-block">
           <div class="code-block-header">
             <span class="lang">GDScript</span>
@@ -1010,6 +1152,12 @@ print(<span class="var">stats</span>.get(<span class="str">"vida"</span>, <span 
           <span class="section-number">02</span>
           <div><div class="section-title">Nodos y Escenas <span class="dim">// El árbol</span></div></div>
         </div>
+        <div class="eli5">
+        <div class="eli5-title">🔰 En palabras simples</div>
+        <p>En Godot <strong>todo es un nodo</strong>: el jugador, una imagen, un sonido, una zona de colisión. Los nodos se cuelgan unos de otros formando un árbol de padres e hijos, y ese árbol es tu <strong>escena</strong>. Un detalle clave: un nodo hijo se mueve junto con su padre, así que armás cosas complejas combinando piezas simples.</p>
+        <p class="eli5-analogy"><strong>Analogía:</strong> como un árbol genealógico u organigrama: hay un nodo “jefe” arriba y debajo cuelgan sus partes. Si movés al jefe, sus hijos lo siguen.</p>
+        </div>
+
         <p>Cada entidad en Godot es un <strong>Nodo</strong>. Los nodos se componen para formar <strong>Escenas</strong>. Una escena es como un "prefab" reutilizable.</p>
         <h2>Acceder a nodos</h2>
         <div class="code-block">
@@ -1039,6 +1187,12 @@ queue_free()           <span class="cm"># al final del frame (seguro)</span>
           <span class="section-number">02</span>
           <div><div class="section-title">Nodos y Escenas <span class="dim">// Señales (Signals)</span></div></div>
         </div>
+        <div class="eli5">
+        <div class="eli5-title">🔰 En palabras simples</div>
+        <p>Una <strong>señal</strong> es un aviso que un nodo lanza cuando pasa algo (“me golpearon”, “entró un cuerpo”). Otros nodos pueden <strong>escuchar</strong> ese aviso y reaccionar, sin que el que avisa sepa quién lo escucha. Esto mantiene tu código ordenado: las piezas no dependen unas de otras directamente.</p>
+        <p class="eli5-analogy"><strong>Analogía:</strong> es como tocar un timbre: el que toca no sabe quién va a abrir; solo avisa. Quien esté escuchando, responde.</p>
+        </div>
+
         <p>Las <strong>signals</strong> son el sistema de eventos de Godot. Permiten que un nodo notifique a otros sin conocerlos directamente (bajo acoplamiento).</p>
         <div class="code-block">
           <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">signals.gd</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
@@ -1078,6 +1232,12 @@ queue_free()           <span class="cm"># al final del frame (seguro)</span>
           <span class="section-number">02</span>
           <div><div class="section-title">Nodos y Escenas <span class="dim">// Grupos</span></div></div>
         </div>
+        <div class="eli5">
+        <div class="eli5-title">🔰 En palabras simples</div>
+        <p>Un <strong>grupo</strong> es una etiqueta que le ponés a varios nodos para tratarlos en conjunto. Si marcás a todos los enemigos con el grupo <code class="inline">enemies</code>, después podés, por ejemplo, congelarlos a todos de una sola vez o contar cuántos quedan vivos, sin tener que buscarlos uno por uno.</p>
+        <p class="eli5-analogy"><strong>Analogía:</strong> como ponerle a un montón de cosas una etiqueta del mismo color: luego agarrás “todas las rojas” de un saque.</p>
+        </div>
+
         <div class="code-block">
           <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">grupos.gd</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
           <pre><code><span class="cm"># Añadir a grupo (también se puede desde el Inspector)</span>
@@ -1104,6 +1264,12 @@ print(<span class="str">"Enemigos vivos: "</span>, <span class="var">all_enemies
           <span class="section-number">02</span>
           <div><div class="section-title">Nodos y Escenas <span class="dim">// Instancias</span></div></div>
         </div>
+        <div class="eli5">
+        <div class="eli5-title">🔰 En palabras simples</div>
+        <p><strong>Instanciar</strong> es crear una copia de una escena mientras el juego corre: una bala nueva cada vez que disparás, un enemigo que aparece. Diseñás la “plantilla” una sola vez (un archivo <code class="inline">.tscn</code>) y generás copias cuando las necesitás.</p>
+        <p class="eli5-analogy"><strong>Analogía:</strong> la escena es el molde; instanciar es sacar copias del molde, como un sello que hace infinitas estampas iguales.</p>
+        </div>
+
         <div class="code-block">
           <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">instancias.gd</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
           <pre><code><span class="cm"># ── preload vs load ──</span>
@@ -1154,6 +1320,12 @@ print(<span class="str">"Enemigos vivos: "</span>, <span class="var">all_enemies
           <span class="section-number">03</span>
           <div><div class="section-title">Jugador 2D <span class="dim">// CharacterBody2D</span></div></div>
         </div>
+        <div class="eli5">
+        <div class="eli5-title">🔰 En palabras simples</div>
+        <p><strong>CharacterBody2D</strong> es el tipo de nodo pensado para personajes que vos controlás (el jugador, los enemigos). Trae una función estrella, <code class="inline">move_and_slide()</code>, que mueve el cuerpo y resuelve los choques con paredes y pisos por vos, así no tenés que programar la física a mano.</p>
+        <p class="eli5-analogy"><strong>Analogía:</strong> es como un auto con dirección asistida: vos decís hacia dónde y a qué velocidad; el sistema se encarga de que no atravieses las paredes.</p>
+        </div>
+
         <p><code class="inline">CharacterBody2D</code> es el nodo base para personajes controlados. Ofrece <code class="inline">move_and_slide()</code> que maneja colisiones automáticamente.</p>
         <div class="node-tree">
           <div class="node-row"><span class="nname">🧍 Player</span><span class="ntype">CharacterBody2D</span></div>
@@ -1234,6 +1406,12 @@ print(<span class="str">"Enemigos vivos: "</span>, <span class="var">all_enemies
           <span class="section-number">03</span>
           <div><div class="section-title">Jugador 2D <span class="dim">// Input Map y Movimiento</span></div></div>
         </div>
+        <div class="eli5">
+        <div class="eli5-title">🔰 En palabras simples</div>
+        <p>El <strong>input</strong> es lo que hace el jugador: apretar teclas, mover el joystick. En vez de programar “tecla A” directo, Godot te deja crear <strong>acciones</strong> con nombre (<code class="inline">move_left</code>) y asignarles teclas. Así tu código habla de “moverse a la izquierda” y funciona igual con teclado o con control. Más abajo verás dos trucos (<em>coyote time</em> y <em>jump buffer</em>) que hacen que el salto se sienta justo.</p>
+        <p class="eli5-analogy"><strong>Analogía:</strong> como los controles configurables de un juego: vos pensás “saltar”, y por debajo eso puede ser la barra espaciadora o el botón A del control.</p>
+        </div>
+
         <h2>Configurar Input Map</h2>
         <p>Ve a <strong>Project → Project Settings → Input Map</strong>. Añade acciones y asigna teclas. Esto desacopla la lógica del hardware.</p>
         <table class="data-table">
@@ -1305,6 +1483,12 @@ print(<span class="str">"Enemigos vivos: "</span>, <span class="var">all_enemies
           <span class="section-number">03</span>
           <div><div class="section-title">Jugador 2D <span class="dim">// AnimatedSprite2D</span></div></div>
         </div>
+        <div class="eli5">
+        <div class="eli5-title">🔰 En palabras simples</div>
+        <p><strong>Animar</strong> es mostrar imágenes en secuencia para dar sensación de movimiento. El nodo <code class="inline">AnimatedSprite2D</code> guarda esas secuencias (quieto, correr, saltar) y vos le decís cuál reproducir según lo que el personaje esté haciendo en ese momento.</p>
+        <p class="eli5-analogy"><strong>Analogía:</strong> como un folioscopio: un cuaderno con un dibujito distinto en cada hoja; al pasarlas rápido parece que se mueve.</p>
+        </div>
+
         <div class="code-block">
           <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">animaciones.gd</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
           <pre><code><span class="cm"># ── AnimatedSprite2D ──</span>
@@ -1344,6 +1528,12 @@ print(<span class="str">"Enemigos vivos: "</span>, <span class="var">all_enemies
           <span class="section-number">03</span>
           <div><div class="section-title">Jugador 2D <span class="dim">// Camera2D</span></div></div>
         </div>
+        <div class="eli5">
+        <div class="eli5-title">🔰 En palabras simples</div>
+        <p>La <strong>cámara</strong> decide qué parte del mundo se ve en pantalla. Si la hacés seguir al jugador, la vista se mueve con él. También podés ponerle <strong>límites</strong> (para no mostrar fuera de la sala) y <strong>suavizado</strong> (para que no se mueva a los tirones).</p>
+        <p class="eli5-analogy"><strong>Analogía:</strong> como un camarógrafo que sigue al actor: lo enfoca y se mueve con él, pero sin salirse del set.</p>
+        </div>
+
         <div class="code-block">
           <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">camera2d.gd</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
           <pre><code><span class="cm"># ── Cámara básica (hijo del player) ──</span>
@@ -1402,6 +1592,12 @@ print(<span class="str">"Enemigos vivos: "</span>, <span class="var">all_enemies
           <span class="section-number">04</span>
           <div><div class="section-title">Metroidvania <span class="dim">// Diseño de Salas</span></div></div>
         </div>
+        <div class="eli5">
+        <div class="eli5-title">🔰 En palabras simples</div>
+        <p>Un <strong>metroidvania</strong> es un juego de un mundo grande dividido en <strong>salas conectadas</strong> que vas explorando. Cada sala es una escena de Godot, y un <code class="inline">RoomManager</code> se encarga de cargar la sala en la que entrás y descargar la que dejás, para que el juego no tenga que cargar el mundo entero de golpe.</p>
+        <p class="eli5-analogy"><strong>Analogía:</strong> como las habitaciones de una casa: solo prendés la luz del cuarto en el que estás. Al cambiar de cuarto, apagás uno y prendés otro.</p>
+        </div>
+
         <p>Un metroidvania se compone de <strong>salas interconectadas</strong>. Cada sala es una escena Godot. El <strong>Room Manager</strong> carga y descarga salas al pasar por puertas.</p>
         <h2>Estructura de archivos sugerida</h2>
         <div class="code-block">
@@ -1463,6 +1659,12 @@ print(<span class="str">"Enemigos vivos: "</span>, <span class="var">all_enemies
           <span class="section-number">04</span>
           <div><div class="section-title">Metroidvania <span class="dim">// TileMapLayer</span></div></div>
         </div>
+        <div class="eli5">
+        <div class="eli5-title">🔰 En palabras simples</div>
+        <p>Un <strong>TileMap</strong> te deja “pintar” el escenario con piezas pequeñas y repetibles llamadas <strong>tiles</strong> (bloques de pasto, pared, piso) sobre una grilla. Es mucho más rápido que colocar cada pieza a mano y permite que el juego sepa cuáles tienen colisión.</p>
+        <p class="eli5-analogy"><strong>Analogía:</strong> como armar un dibujo con piezas de Lego o azulejos: encajás bloques iguales en una cuadrícula hasta formar el nivel.</p>
+        </div>
+
         <p>En Godot 4.3+, el sistema TileMap usa <strong>TileMapLayer</strong>. Cada capa (fondo, colisiones, decoración) es un nodo independiente.</p>
         <div class="code-block">
           <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">tilemap.gd</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
@@ -1500,6 +1702,12 @@ print(<span class="str">"Enemigos vivos: "</span>, <span class="var">all_enemies
           <span class="section-number">04</span>
           <div><div class="section-title">Metroidvania <span class="dim">// Sistema de Habilidades</span></div></div>
         </div>
+        <div class="eli5">
+        <div class="eli5-title">🔰 En palabras simples</div>
+        <p>En un metroidvania vas ganando <strong>habilidades</strong> (doble salto, dash) que abren zonas antes inaccesibles. Conviene guardar en un único lugar qué habilidades tenés desbloqueadas, así cualquier puerta o parte del juego puede preguntar “¿ya tiene doble salto?”.</p>
+        <p class="eli5-analogy"><strong>Analogía:</strong> como un llavero: cada habilidad nueva es una llave, y algunas puertas no abren hasta que conseguís la correcta.</p>
+        </div>
+
         <div class="code-block">
           <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">AbilitySystem.gd (Autoload)</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
           <pre><code><span class="kw">extends</span> <span class="cls">Node</span>
@@ -1541,6 +1749,12 @@ print(<span class="str">"Enemigos vivos: "</span>, <span class="var">all_enemies
           <span class="section-number">04</span>
           <div><div class="section-title">Metroidvania <span class="dim">// Enemigos e IA básica</span></div></div>
         </div>
+        <div class="eli5">
+        <div class="eli5-title">🔰 En palabras simples</div>
+        <p>La <strong>IA</strong> acá no es nada mágico: son reglas simples que deciden qué hace el enemigo según la situación. Lo habitual es una <strong>máquina de estados</strong>: “patrullar” hasta que ve al jugador, “perseguir” cuando está cerca y “atacar” si lo alcanza.</p>
+        <p class="eli5-analogy"><strong>Analogía:</strong> como un guardia de seguridad: camina su ronda; si te ve, te sigue; si te alcanza, reacciona. Reglas claras, no inteligencia real.</p>
+        </div>
+
         <div class="code-block">
           <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">enemy_base.gd</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
           <pre><code><span class="kw">extends</span> <span class="cls">CharacterBody2D</span>
@@ -1605,6 +1819,12 @@ print(<span class="str">"Enemigos vivos: "</span>, <span class="var">all_enemies
           <span class="section-number">04</span>
           <div><div class="section-title">Metroidvania <span class="dim">// Transiciones de sala</span></div></div>
         </div>
+        <div class="eli5">
+        <div class="eli5-title">🔰 En palabras simples</div>
+        <p>Una <strong>transición</strong> es lo que ocurre cuando el jugador cruza de una sala a otra: se detecta que tocó una puerta, se carga la sala destino y se ubica al jugador en su punto de entrada, normalmente con un <strong>fundido</strong> para que el cambio no se vea brusco.</p>
+        <p class="eli5-analogy"><strong>Analogía:</strong> como cruzar una puerta en la vida real: por un instante no ves el otro lado (el fundido) y al pasar aparecés del otro lado, en el lugar correcto.</p>
+        </div>
+
         <div class="code-block">
           <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">DoorTrigger.gd</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
           <pre><code><span class="kw">extends</span> <span class="cls">Area2D</span>
@@ -1647,6 +1867,12 @@ print(<span class="str">"Enemigos vivos: "</span>, <span class="var">all_enemies
           <span class="section-number">05</span>
           <div><div class="section-title">Pixel Art <span class="dim">// Configuración</span></div></div>
         </div>
+        <div class="eli5">
+        <div class="eli5-title">🔰 En palabras simples</div>
+        <p>El <strong>pixel art</strong> son dibujos hechos con pocos píxeles, grandes y bien definidos. Para que se vean nítidos y no borrosos al agrandarlos, hay que decirle a Godot que <strong>no suavice</strong> las imágenes. Son un par de ajustes que se hacen una sola vez al empezar el proyecto.</p>
+        <p class="eli5-analogy"><strong>Analogía:</strong> como elegir “sin suavizado” al ampliar una foto cuadriculada: querés ver los cuadritos filosos, no una mancha difuminada.</p>
+        </div>
+
         <h2>Project Settings para Pixel Art perfecto</h2>
         <table class="data-table">
           <thead><tr><th>Ajuste</th><th>Ruta</th><th>Valor</th></tr></thead>
@@ -1677,6 +1903,12 @@ HDR Compression          = Disabled</code></pre>
           <span class="section-number">05</span>
           <div><div class="section-title">Pixel Art <span class="dim">// Sprites y animaciones</span></div></div>
         </div>
+        <div class="eli5">
+        <div class="eli5-title">🔰 En palabras simples</div>
+        <p>Acá ves cómo cargar tus dibujos de pixel art como animaciones. Un <strong>spritesheet</strong> es una sola imagen con todos los cuadros de una animación puestos en fila; Godot la corta en cuadros y los reproduce en orden para darte el movimiento.</p>
+        <p class="eli5-analogy"><strong>Analogía:</strong> como una tira de fotos de fotomatón: una sola hoja con varias poses; al pasarlas en orden, el personaje se mueve.</p>
+        </div>
+
         <div class="code-block">
           <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">sprite_setup.gd</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
           <pre><code><span class="cm"># ── SpriteFrames: crear en código o desde el Editor ──</span>
@@ -1709,6 +1941,12 @@ HDR Compression          = Disabled</code></pre>
           <span class="section-number">05</span>
           <div><div class="section-title">Pixel Art <span class="dim">// Iluminación 2D</span></div></div>
         </div>
+        <div class="eli5">
+        <div class="eli5-title">🔰 En palabras simples</div>
+        <p>Las <strong>luces 2D</strong> te dejan oscurecer la escena y luego iluminar zonas concretas (una antorcha, un aura alrededor del jugador). Son la herramienta clave para crear atmósfera de cueva o mazmorra.</p>
+        <p class="eli5-analogy"><strong>Analogía:</strong> como apagar la luz de una pieza y caminar con una linterna: solo ves lo que ilumina el haz.</p>
+        </div>
+
         <p>Godot 4 tiene un sistema de luces 2D muy completo que funciona perfecto con pixel art.</p>
         <div class="node-tree">
           <div class="node-row"><span class="nname">🌍 World</span><span class="ntype">Node2D</span></div>
@@ -1741,6 +1979,12 @@ HDR Compression          = Disabled</code></pre>
           <span class="section-number">05</span>
           <div><div class="section-title">Pixel Art <span class="dim">// Shaders básicos</span></div></div>
         </div>
+        <div class="eli5">
+        <div class="eli5-title">🔰 En palabras simples</div>
+        <p>Un <strong>shader</strong> es un mini-programa que corre en la placa de video y cambia cómo se ve algo: pintar un contorno, hacer parpadear en blanco al recibir daño. Suena avanzado, pero acá usás recetas cortas y listas para copiar y pegar.</p>
+        <p class="eli5-analogy"><strong>Analogía:</strong> como un filtro de Instagram aplicado a un sprite: la imagen es la misma, pero el shader cambia su apariencia en tiempo real.</p>
+        </div>
+
         <div class="code-block">
           <div class="code-block-header"><span class="lang">GLSL / GDShader</span><span class="file-name">outline.gdshader (contorno sprite)</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
           <pre><code>shader_type canvas_item;
@@ -1813,6 +2057,12 @@ void fragment() {
           <span class="section-number">06</span>
           <div><div class="section-title">Sistemas <span class="dim">// Save / Load</span></div></div>
         </div>
+        <div class="eli5">
+        <div class="eli5-title">🔰 En palabras simples</div>
+        <p><strong>Guardar partida</strong> es escribir en un archivo los datos importantes (posición, vida, habilidades) para recuperarlos después. <strong>Cargar</strong> es leer ese archivo y dejar el juego como estaba. En Godot esto va en <code class="inline">user://</code>, una carpeta segura reservada para los datos del jugador.</p>
+        <p class="eli5-analogy"><strong>Analogía:</strong> como anotar en un papel dónde quedaste antes de cerrar el libro, para retomar en la misma página la próxima vez.</p>
+        </div>
+
         <div class="code-block">
           <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">SaveSystem.gd (Autoload)</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
           <pre><code><span class="kw">extends</span> <span class="cls">Node</span>
@@ -1856,6 +2106,12 @@ void fragment() {
           <span class="section-number">06</span>
           <div><div class="section-title">Sistemas <span class="dim">// HUD en pixel art</span></div></div>
         </div>
+        <div class="eli5">
+        <div class="eli5-title">🔰 En palabras simples</div>
+        <p>El <strong>HUD</strong> es la información que ves encima del juego sin ser parte del mundo: la barra de vida, los íconos de habilidades, el puntaje. Se arma con nodos de interfaz y se mantiene actualizado escuchando <strong>señales</strong> del jugador (por ejemplo, cuando cambia su vida).</p>
+        <p class="eli5-analogy"><strong>Analogía:</strong> como el velocímetro y el indicador de nafta del auto: están siempre a la vista, pero no son parte de la calle.</p>
+        </div>
+
         <div class="code-block">
           <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">HUD.gd</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
           <pre><code><span class="kw">extends</span> <span class="cls">CanvasLayer</span>
@@ -1891,6 +2147,12 @@ void fragment() {
           <span class="section-number">06</span>
           <div><div class="section-title">Sistemas <span class="dim">// Audio Manager</span></div></div>
         </div>
+        <div class="eli5">
+        <div class="eli5-title">🔰 En palabras simples</div>
+        <p>El <strong>audio</strong> son la música de fondo y los efectos de sonido (saltar, golpear, recoger). Conviene tener un <code class="inline">AudioManager</code> central que reproduzca todo, así controlás volúmenes y transiciones desde un solo lugar.</p>
+        <p class="eli5-analogy"><strong>Analogía:</strong> como el DJ de una fiesta: una sola persona maneja la música y los efectos para todos, en vez de que cada uno traiga su parlante.</p>
+        </div>
+
         <div class="code-block">
           <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">AudioManager.gd (Autoload)</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
           <pre><code><span class="kw">extends</span> <span class="cls">Node</span>
@@ -1925,6 +2187,12 @@ void fragment() {
           <span class="section-number">06</span>
           <div><div class="section-title">Sistemas <span class="dim">// Autoloads (Singletons)</span></div></div>
         </div>
+        <div class="eli5">
+        <div class="eli5-title">🔰 En palabras simples</div>
+        <p>Un <strong>Autoload</strong> (o <em>singleton</em>) es un nodo que vive durante todo el juego y es accesible desde cualquier parte. Es perfecto para los “managers” (guardado, audio, habilidades) que tienen que estar disponibles siempre, sin importar en qué sala estés.</p>
+        <p class="eli5-analogy"><strong>Analogía:</strong> como la recepción de un hotel: siempre está ahí, en un solo lugar, y cualquier habitación puede llamarla cuando necesita algo.</p>
+        </div>
+
         <p>Los <strong>Autoloads</strong> en Godot son singletons globales, accesibles desde cualquier script. Perfectos para managers.</p>
         <div class="code-block">
           <div class="code-block-header"><span class="lang">Configuración</span><span class="file-name">Project → Project Settings → Autoload</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
@@ -1983,6 +2251,12 @@ Transition      →  res://scenes/ui/Transition.tscn  <span class="cm"># (escena
           <span class="section-number">07</span>
           <div><div class="section-title">Referencia <span class="dim">// Cheat Sheet GDScript</span></div></div>
         </div>
+        <div class="eli5">
+        <div class="eli5-title">🔰 En palabras simples</div>
+        <p>Esta es una <strong>hoja de referencia rápida</strong>: las funciones y operaciones que vas a usar todo el tiempo, juntas para consultarlas de un vistazo. No hace falta memorizarlas; se aprenden de tanto usarlas.</p>
+        <p class="eli5-analogy"><strong>Analogía:</strong> como tener los atajos de teclado pegados al costado del monitor: los mirás hasta que te salen solos.</p>
+        </div>
+
         <h2>Métodos de nodo más usados</h2>
         <table class="data-table">
           <thead><tr><th>Método</th><th>Descripción</th></tr></thead>
@@ -2024,6 +2298,12 @@ Transition      →  res://scenes/ui/Transition.tscn  <span class="cm"># (escena
           <span class="section-number">07</span>
           <div><div class="section-title">Referencia <span class="dim">// Patrones comunes Metroidvania</span></div></div>
         </div>
+        <div class="eli5">
+        <div class="eli5-title">🔰 En palabras simples</div>
+        <p>Un <strong>patrón</strong> es una solución probada a un problema que aparece seguido. En vez de inventar cada vez cómo hacer una máquina de estados o un objeto recolectable, usás una receta que ya funciona y la adaptás a tu caso.</p>
+        <p class="eli5-analogy"><strong>Analogía:</strong> como las recetas de cocina: no reinventás cómo hacer un huevo frito cada día; seguís la que ya sabés que sale bien.</p>
+        </div>
+
         <div class="code-block">
           <div class="code-block-header"><span class="lang">GDScript</span><span class="file-name">patterns.gd</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
           <pre><code><span class="cm"># ── 1. State Machine simple con match ──</span>
@@ -2081,6 +2361,12 @@ Transition      →  res://scenes/ui/Transition.tscn  <span class="cm"># (escena
           <span class="section-number">07</span>
           <div><div class="section-title">Referencia <span class="dim">// Recursos externos</span></div></div>
         </div>
+        <div class="eli5">
+        <div class="eli5-title">🔰 En palabras simples</div>
+        <p>Acá tenés enlaces para seguir aprendiendo y herramientas gratuitas para crear arte, sonido y niveles. Lo más valioso cuando aprendés por tu cuenta no es saberlo todo, sino <strong>saber dónde buscar</strong> cuando te trabás.</p>
+        <p class="eli5-analogy"><strong>Analogía:</strong> como tener una buena agenda de contactos: no necesitás saber todo, solo a quién preguntarle.</p>
+        </div>
+
         <h2>Documentación oficial</h2>
         <div class="cards">
           <div class="card">
@@ -2168,6 +2454,7 @@ Transition      →  res://scenes/ui/Transition.tscn  <span class="cm"># (escena
 <!-- HAMBURGER -->
 <button class="hamburger" id="hamburger" onclick="openSidebar()">☰</button>
 
-<script src="js/app.js?v=2"></script>
+<script src="js/app.js?v=4"></script>
+<script src="js/extensions.js?v=4"></script>
 </body>
 </html>
