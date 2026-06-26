@@ -33,6 +33,7 @@
     'Save/Load': 'Save/Load', 'HUD & UI': 'HUD & UI', 'Audio': 'Audio', 'Autoloads': 'Autoloads',
     'Cheat Sheet': 'Cheat Sheet', 'Patrones comunes': 'Common Patterns', 'Recursos externos': 'External Resources'
   };
+  try { window.I18N_PAGE = PAGE_EN; window.I18N_SECTION = SECTION_EN; } catch (e) {}
 
   /* index -> English innerHTML (markup preserved). */
   var T = {
